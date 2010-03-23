@@ -1,5 +1,5 @@
-require 'lib/ast'
-require 'lib/rules'
+require 'ast'
+require 'rules'
 
 class Grammar
 	attr_accessor :name

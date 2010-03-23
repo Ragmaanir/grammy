@@ -2,4 +2,7 @@
 ==================================================
 ###  : Add logger and convert puts to debug messages
 ###  : Error report and hooks
+#### : optional rules: :identifier?
+#### : Ignore/skip parser: whitespaces & comments
+###  : GrammySpec: SpecFramework for grammars: expectations for acceptance and generated AST
 

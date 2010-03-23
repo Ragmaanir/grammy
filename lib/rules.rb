@@ -1,4 +1,4 @@
-require 'lib/ast'
+require 'ast'
 
 module Grammy
 	module Rules
