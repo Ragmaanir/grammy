@@ -2,10 +2,6 @@ require 'lib/ast'
 require 'lib/rules'
 
 class Grammar
-	def self.define(name,&block)
-		Grammar.new(name,&block)
-	end
-
 	attr_accessor :name
 	attr_reader :rules
 

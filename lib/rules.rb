@@ -1,6 +1,6 @@
 require 'lib/ast'
 
-class Grammy
+module Grammy
 	module Rules
 
 		module Operators
@@ -235,4 +235,4 @@ class Grammy
 		end
 
 	end # module Rules
-end # class Grammy
+end # module Grammy

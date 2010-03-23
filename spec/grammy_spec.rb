@@ -1,14 +1,14 @@
 
 gem 'rspec'
 
-require 'lib/grammar'
+require 'grammy'
 
-describe Grammar do
+describe Grammy do
 
 	describe "DEFINITION" do
 
 		it "should define empty grammar" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 
 			end
 
@@ -17,7 +17,7 @@ describe Grammar do
 		end
 
 		it "should define grammar with sequence rule via string" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				rule token: 'test'
 			end
 
@@ -26,7 +26,7 @@ describe Grammar do
 		end
 
 		it "should define grammar with sequence rule via concat" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				rule token: 'test' >> 'other'
 			end
 
@@ -35,7 +35,7 @@ describe Grammar do
 		end
 
 		it "should define grammar with alternative rule via range" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				rule lower: 'a'..'z'
 			end
 
@@ -44,7 +44,7 @@ describe Grammar do
 		end
 
 		it "should define grammar with alternative rule via array" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				rule a_or_g: ['a','g']
 			end
 
@@ -53,7 +53,7 @@ describe Grammar do
 		end
 
 		it "should define grammar with alternative rule via symbols" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				rule a: 'a'
 				rule b: 'b'
 				rule a_or_b: :a | :b
@@ -64,7 +64,7 @@ describe Grammar do
 		end
 
 		it "should define simple grammar" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				rule digits: (0..9) * (0..16)
 				rule lower: 'a'..'z'
 				rule upper: 'A'..'Z'
@@ -89,7 +89,7 @@ describe Grammar do
 
 		it "should raise when duplicate rules" do
 			expect{
-				Grammar.define :simple do
+				Grammy.define :simple do
 					rule a: 'a'
 					rule a: 'b'
 				end
@@ -103,7 +103,7 @@ describe Grammar do
 		describe 'Rule' do
 
 			it "should match character" do
-				g = Grammar.define :simple do
+				g = Grammy.define :simple do
 					rule lower: 'a'..'z'
 				end
 
@@ -114,7 +114,7 @@ describe Grammar do
 			end
 
 			it "should match string without helper" do
-				g = Grammar.define :simple do
+				g = Grammy.define :simple do
 					rule lower: 'a'..'z'
 					rule string: :lower * (1..16)
 				end
@@ -130,7 +130,7 @@ describe Grammar do
 			end
 
 			it "should merge helper nodes" do
-				g = Grammar.define :simple do
+				g = Grammy.define :simple do
 					helper lower: 'a'..'z'
 					rule string: :lower * (1..16)
 				end
@@ -144,7 +144,7 @@ describe Grammar do
 		end
 
 		it "should parse string with constant repetition" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				helper lower: 'a'..'z'
 				rule string: :lower * 4
 			end
@@ -157,7 +157,7 @@ describe Grammar do
 		end
 
 		it "should parse string with sequence" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				helper lower: 'a'..'z'
 				rule string: :lower >> :lower >> :lower >> :lower
 			end
@@ -170,7 +170,7 @@ describe Grammar do
 		end
 
 		it "should parse string with constant repetition in sequence" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				helper lower: 'a'..'z'
 				rule string: :lower*3 >> :lower
 			end
@@ -181,7 +181,7 @@ describe Grammar do
 		end
 
 		it "should parse an identifier" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				helper lower: 'a'..'z'
 				helper upper: 'A'..'Z'
 				helper letter: :lower | :upper
@@ -199,7 +199,7 @@ describe Grammar do
 
 	describe "AST" do
 		it "should remove helper nodes" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				helper lower: 'a'..'z'
 				helper upper: 'A'..'Z'
 				helper letter: :lower | :upper
@@ -215,7 +215,7 @@ describe Grammar do
 		end
 
 		it "should only remove helper nodes" do
-			g = Grammar.define :simple do
+			g = Grammy.define :simple do
 				rule id: ('a'..'z')*(1..10)
 				helper part: :id >> ':' >> :id
 				rule sent: :part >> '.'

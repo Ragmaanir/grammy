@@ -9,7 +9,7 @@ require 'spec/rake/spectask'
 
 spec = Gem::Specification.new do |s|
   s.name = 'Grammy'
-  s.version = '0.0.1'
+  s.version = '0.0.2'
   s.has_rdoc = true
   s.extra_rdoc_files = ['README', 'LICENSE']
   s.summary = 'Grammy is a DSL to describe Grammars and gernerate LL Parsers'
