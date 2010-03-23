@@ -1,7 +1,7 @@
 
 gem 'rspec'
 
-require 'grammy'
+require 'Grammy'
 
 describe Grammy do
 
