@@ -1,24 +1,42 @@
 class AST
 
 	class Node
-		attr_accessor :name, :children
-		attr_reader :match_range, :stream
+		attr_accessor :name, :children, :match_range
+		attr_reader :stream
 
 		def initialize(name,options={})
 			@name = name || 'anonymous'
-			@children = options[:children]
+			@children = options[:children] || []
 			@match_range = options[:match_range]
+			@merge = options[:merge]
+			@stream = options[:stream] || raise("no stream given")
 		end
 
-		def stream= (stream)
-			@stream = stream
-			@children.each { |c|
-				c.stream = stream if c.is_a? Node
-			}
+		def match_range
+			@match_range || raise("no match range")
 		end
 
 		def data
-			stream[@match_range]
+			raise "node '#{name}' has no stream" unless stream
+			stream[match_range]
+		end
+
+		def leaf_node?
+			@children.empty?
+		end
+		
+		def merge?
+			@merge
+		end
+
+		def add_child(node)
+			raise "node is nil" if node.nil?
+			raise "node is no Node: '#{node}'" unless node.is_a? Node
+			if node.merge?
+				@children = @children + node.children
+			else
+				@children << node
+			end
 		end
 
 		def to_s(indents=0)
@@ -27,7 +45,9 @@ class AST
 			result = ""
 			result << indent + "#{@name}"
 			
-			if @children.is_a? Array
+			if leaf_node?
+				result << "{'#{data}'}"
+			else
 				result << "{ \n"
 				result << @children.map{ |c|
 						if c.is_a? Node
@@ -37,8 +57,6 @@ class AST
 						end
 					}.join("\n")
 				result << indent + "}"
-			else
-				result << "{'#{@children}'}"
 			end
 
 			result << "\n"

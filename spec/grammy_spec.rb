@@ -1,5 +1,5 @@
 
-require 'spec'
+gem 'rspec'
 
 require 'lib/grammar'
 
@@ -109,31 +109,36 @@ describe Grammar do
 
 				node = g.rules[:lower].match("some",0)
 				node.should be_a AST::Node
-				node.match_range.should == (0..1)
+				node.match_range.should == (0..0)
 				node.name.should == :lower
 			end
 
-			it "should match string" do
+			it "should match string without helper" do
 				g = Grammar.define :simple do
 					rule lower: 'a'..'z'
 					rule string: :lower * (1..16)
 				end
 
 				node = g.rules[:string].match("some",0)
+				
 				node.should be_a AST::Node
 				node.name.should == :string
-				node.match_range.should == (0..4)
+				node.match_range.should == (0..3)
+				node.to_s.should_not == "string{'some'}\n"
+				node.children.length.should == 4
+				node.children.first.to_s.should == "lower{'s'}\n"
 			end
 
-			it "should merge nodes" do
+			it "should merge helper nodes" do
 				g = Grammar.define :simple do
 					helper lower: 'a'..'z'
 					rule string: :lower * (1..16)
 				end
 
 				node = g.rules[:string].match("some",0)
-				puts node.to_s
-				node.children.should == ['some']
+				node.data.should == "some"
+				node.children.should be_empty
+				node.to_s.should == "string{'some'}\n"
 			end
 		
 		end
@@ -143,9 +148,12 @@ describe Grammar do
 				helper lower: 'a'..'z'
 				rule string: :lower * 4
 			end
-
+			
 			tree = g.parse("some",rule: :string)
-			tree.children.should == ["some"]
+
+			tree.data.should == "some"
+			tree.to_s.should == "string{'some'}\n"
+			tree.children.should be_empty
 		end
 
 		it "should parse string with sequence" do
@@ -155,7 +163,10 @@ describe Grammar do
 			end
 
 			tree = g.parse("some",rule: :string)
-			tree.children.should == ["some"]
+			
+			tree.data.should == "some"
+			tree.match_range.should == (0..3)
+			tree.children.should be_empty
 		end
 
 		it "should parse string with constant repetition in sequence" do
@@ -165,7 +176,8 @@ describe Grammar do
 			end
 
 			tree = g.parse("some",rule: :string)
-			tree.children.should == ["some"]
+			tree.data.should == "some"
+			tree.match_range.should == (0..3)
 		end
 
 		it "should parse an identifier" do
@@ -179,13 +191,55 @@ describe Grammar do
 			end
 
 			tree = g.parse("some_id0",rule: :ident)
-			puts tree.to_s
+			tree.should be_a AST::Node
+			tree.data.should == "some_id0"
 		end
 
 	end
 
 	describe "AST" do
-		
+		it "should remove helper nodes" do
+			g = Grammar.define :simple do
+				helper lower: 'a'..'z'
+				helper upper: 'A'..'Z'
+				helper letter: :lower | :upper
+				helper ident_start: :letter | '_';
+				helper ident_letter: :ident_start | ('0'..'9')
+				rule ident: :ident_start >> (:ident_letter * (0..128))
+			end
+
+			tree = g.parse("some_id0",rule: :ident)
+
+			tree.to_s.should == "ident{'some_id0'}\n"
+			tree.children.should be_empty
+		end
+
+		it "should only remove helper nodes" do
+			g = Grammar.define :simple do
+				rule id: ('a'..'z')*(1..10)
+				helper part: :id >> ':' >> :id
+				rule sent: :part >> '.'
+				rule start: :sent*(1..3)
+			end
+
+			tree = g.parse("ab:ac.kk:ee.",rule: :start)
+
+			g.rules[:sent].should_not be_helper
+			
+			tree.data.should == "ab:ac.kk:ee."
+			
+			tree.children.length.should == 2
+			sent1 = tree.children.first
+			sent2 = tree.children.last
+
+			sent1.name.should == :sent
+			sent2.name.should == :sent
+			sent1.data.should == "ab:ac."
+			sent2.data.should == "kk:ee."
+			
+			sent1.children.map{|c| {c.name => c.data}}.should == [{id: 'ab'}, {id: 'ac'}]
+			sent2.children.map{|c| {c.name => c.data}}.should == [{id: 'kk'}, {id: 'ee'}]
+		end
 	end
 
 end

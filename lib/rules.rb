@@ -5,20 +5,31 @@ class Grammy
 
 		module Operators
 			def >>(other)
-				Sequence.new(nil,[self,other], merge: true)
+				if other.is_a? Sequence and other.helper?
+					Sequence.new(nil,[self]+other.sequence, helper: true)
+				else
+					Sequence.new(nil,[self,other], helper: true)
+				end
 			end
 
 			def |(other)
-				Alternatives.new(nil,[self,other], merge: true)
+				Alternatives.new(nil,[self,other], helper: true)
 			end
 			
 			def *(times)
 				times = times..times unless times.is_a? Range
-				Repetition.new(nil,self,times: times, merge: true)
+				if self.is_a? Range
+					alt = Alternatives.new(nil,self, helper: true)
+					Repetition.new(nil,alt,times: times, helper: true)
+				else
+					Repetition.new(nil,self,times: times, helper: true)
+				end
 			end
 		end
 
+		#
 		# RULE
+		#
 		class Rule
 			include Operators
 
@@ -34,8 +45,12 @@ class Grammy
 				self.class.name.split('::').last
 			end
 
+			def helper=(value)
+				@options[:helper] = value
+			end
+
 			def helper?
-				(@options[:merge] || !name)
+				(@options[:helper] || !name)
 			end
 
 			def ignore?
@@ -54,36 +69,17 @@ class Grammy
 				}
 			end
 
-			def merge(children)
-				raise unless children.is_a? Array
-				result = []
-
-				children.each { |node|
-					if node.is_a? String and result.last.is_a? String
-						result.last << node
-					else
-						result << node
-					end
-				}
-
-				result
-			end
-
 			def match_element(elem,stream,start_pos)
-				#puts "#{rule_type}.match_element(#{elem},_,#{start_pos})"
+				#puts "#{rule_type}.match_element('#{elem}','#{stream[start_pos..(-1)]}',#{start_pos})"
 				case elem
 					when Rule
-						result = elem.match(stream,start_pos)
-						[result,result.match_range]
+						elem.match(stream,start_pos)
 					when Symbol
-						result = grammar.rules[elem].match(stream,start_pos)
-						[result,result.match_range]
+						grammar.rules[elem].match(stream,start_pos)
 					when String
-						range = start_pos...(start_pos+elem.length)
-						str = stream[range]
+						range = start_pos..(start_pos+(elem.length-1))
 						# TODO add ability to create custom node MyNode < Node
-						#AST::Node.new(nil, children: elem, match_range: range) if elem == str
-						[elem,range] if elem == str
+						AST::Node.new(:_str, match_range: range, merge: true, stream: stream) if elem == stream[range]
 					else
 						raise "#{rule_type}.match_element type error for: '#{elem}'"
 				end
@@ -91,7 +87,9 @@ class Grammy
 
 		end
 
+		#
 		# SEQUENCE
+		#
 		class Sequence < Rule
 			def initialize(name,seq,options={})
 				raise "seq.class must be in [Symbol,Rule,Array,String]" unless [Symbol,Rule,Array,String].member? seq.class
@@ -109,16 +107,15 @@ class Grammy
 
 				print "#{rule_type}.match(#{stream},#{start_pos})"
 
+				# TODO add ability to create custom node MyNode < Node
+				node = AST::Node.new(name, merge: helper?, stream: stream)
+
 				failed = @sequence.find { |e|
-					result,match_range = match_element(e,stream,cur_pos)
+					result = match_element(e,stream,cur_pos)
 					if result
-						if result.is_a? Array
-							nodes = nodes + result
-						else
-							nodes << result
-						end
+						nodes << result
 						
-						cur_pos = match_range.end
+						cur_pos = result.match_range.end + 1
 					end
 
 					:exit if not result
@@ -130,14 +127,10 @@ class Grammy
 					puts "-> success"
 				end
 
-				# TODO add ability to create custom node MyNode < Node
-				#AST::Node.new(name, children: children, match_range: start_pos..cur_pos) unless failed
-				if not failed
-					if helper?
-						nodes
-					else
-						AST::Node.new(name, children: nodes, match_range: start_pos..cur_pos)
-					end
+				unless failed
+					nodes.each{|n| node.add_child(n) }
+					node.match_range = start_pos..(cur_pos-1)
+					node
 				end
 			end
 		end
@@ -150,8 +143,8 @@ class Grammy
 				@alternatives = alts.map{|r|
 					case r
 						when Range, Array
-							Alternatives.new(nil,r,merge: true)
-						when Rule,String,Symbol
+							Alternatives.new(nil,r,helper: true)
+						when Rule,String,Symbol,Integer
 							r
 					else
 						raise "invalid type: #{r}"
@@ -166,25 +159,24 @@ class Grammy
 
 			def match(stream,start_pos)
 				print "#{rule_type}.match('#{stream}',#{start_pos})"
-				node = nil
-				result = @alternatives.find { |e|
-					node = match_element(e,stream,start_pos)
+				result = nil
+				# TODO add ability to create custom node MyNode < Node
+				node = AST::Node.new(name, merge: helper?, stream: stream)
+				
+				success = @alternatives.find { |e|
+					result = match_element(e,stream,start_pos)
 				}
 
-				if result
-					puts "-> matched '#{result}', match_range: #{node.match_range}"
+				if success
+					puts "-> matched '#{success}', match_range: #{result.match_range}"
 				else
 					puts "-> failed"
 				end
-
-				# TODO add ability to create custom node MyNode < Node
-				#AST::Node.new(name, children: nodes, match_range: start_pos..(node.match_range.end)) if result
-				if result
-					if merge?
-						node
-					else
-						AST::Node.new(name, children: [node], match_range: start_pos..(node.match_range.end))
-					end
+				
+				if success
+					node.add_child(result)
+					node.match_range = result.match_range
+					node
 				end
 			end
 		end
@@ -210,15 +202,19 @@ class Grammy
 				failed = false
 				cur_pos = start_pos
 
+				# TODO add ability to create custom node MyNode < Node
+				node = AST::Node.new(name, merge: helper?, stream: stream)
 				nodes = []
 
 				print "#{rule_type}.match(#{stream},#{start_pos})"
 
 				while not failed and nodes.length < repetitions.max
-					node = match_element(@rule,stream,cur_pos)
-					if node
-						nodes << node
-						cur_pos = node.match_range.end
+					result = match_element(@rule,stream,cur_pos)
+
+					if result
+						nodes << result
+						
+						cur_pos = result.match_range.end + 1
 					else
 						failed = true
 					end
@@ -229,16 +225,12 @@ class Grammy
 				else
 					puts "-> failed"
 				end
-
-				if merge?
-					nodes = nodes.map{ |n|
-						n.children
-					}.flatten
-					nodes = merge(nodes)
+				
+				if repetitions.include? nodes.length
+					nodes.each{|n| node.add_child(n) }
+					node.match_range = start_pos..(cur_pos-1) # TODO compute when adding children?
+					node
 				end
-
-				# TODO add ability to create custom node MyNode < Node
-				AST::Node.new(name, children: nodes, match_range: (start_pos..cur_pos)) if repetitions.include? nodes.length
 			end
 		end
 

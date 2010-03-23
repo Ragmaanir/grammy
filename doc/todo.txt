@@ -1,0 +1,5 @@
+
+==================================================
+###  : Add logger and convert puts to debug messages
+###  : Error report and hooks
+

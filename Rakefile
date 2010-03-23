@@ -1,7 +1,3 @@
-# 
-# To change this template, choose Tools | Templates
-# and open the template in the editor.
- 
 
 require 'rubygems'
 require 'rake'
@@ -16,14 +12,13 @@ spec = Gem::Specification.new do |s|
   s.version = '0.0.1'
   s.has_rdoc = true
   s.extra_rdoc_files = ['README', 'LICENSE']
-  s.summary = 'Your summary here'
+  s.summary = 'Grammy is a DSL to describe Grammars and gernerate LL Parsers'
   s.description = s.summary
-  s.author = ''
-  s.email = ''
-  # s.executables = ['your_executable_here']
-  s.files = %w(LICENSE README Rakefile) + Dir.glob("{bin,lib,spec}/**/*")
+  s.author = 'Ragmaanir'
+  s.email = 'ragmaanir@gmail.com'
+	s.homepage = 'http://ragmaanir.mypresident.de'
+  s.files = %w(LICENSE README Rakefile) + Dir.glob("{lib,spec}/**/*")
   s.require_path = "lib"
-  s.bindir = "bin"
 end
 
 Rake::GemPackageTask.new(spec) do |p|
@@ -39,10 +34,6 @@ Rake::RDocTask.new do |rdoc|
   rdoc.title = "Grammy Docs"
   rdoc.rdoc_dir = 'doc/rdoc' # rdoc output folder
   rdoc.options << '--line-numbers'
-end
-
-Rake::TestTask.new do |t|
-  t.test_files = FileList['test/**/*.rb']
 end
 
 Spec::Rake::SpecTask.new do |t|

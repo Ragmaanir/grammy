@@ -33,7 +33,7 @@ class Grammar
 				when Array
 					rule = Alternatives.new(name,defn,options)
 				when String
-					rule = Sequence.new(name,[defn],{ignore: true}.merge(options))
+					rule = Sequence.new(name,[defn],options)
 				when Symbol
 					raise "empty rule"
 				when Rule
@@ -44,13 +44,13 @@ class Grammar
 
 			rule.grammar = self
 			rule.name = name
+			rule.helper = options[:helper] || false
 			raise "duplicate rule #{name}" if @rules[name]
 			@rules[name] = rule
 		end
 
 		def helper(options)
-			options = options.merge(merge: true)
-			rule(options)
+			rule(options.merge(helper: true))
 		end
 
 	end
@@ -58,12 +58,17 @@ class Grammar
 	include DSL
 
 	def parse(stream,options)
-		#stream = StringStream.new(stream) if stream.is_a? String
-		rule = @rules[options[:rule]]
+		rule = @rules[options[:rule]] || raise("rule '#{options[:rule]}' not found")
 
+		begin
+			tree = rule.match(stream,0)
+		rescue Exception => e
+			puts e
+			puts e.backtrace
+		end
+		
 		tree = rule.match(stream,0)
-		tree.stream = stream
 		tree
 	end
-
+	
 end
