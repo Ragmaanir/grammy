@@ -33,7 +33,8 @@ class AST
 			raise "node is nil" if node.nil?
 			raise "node is no Node: '#{node}'" unless node.is_a? Node
 			if node.merge?
-				@children = @children + node.children
+				#@children = @children + node.children
+				@children.concat(node.children)
 			else
 				@children << node
 			end

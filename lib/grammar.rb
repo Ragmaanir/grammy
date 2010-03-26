@@ -31,7 +31,9 @@ class Grammar
 				when String
 					rule = Sequence.new(name,[defn],options)
 				when Symbol
-					raise "empty rule"
+					#raise "empty rule: #{name}"
+					puts "warning: empty rule '#{name}'"
+					rule = @rules[name] || raise("rule '#{defn}' not found in rule '#{name}'")
 				when Rule
 					rule = defn
 			else

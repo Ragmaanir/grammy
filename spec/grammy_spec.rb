@@ -63,6 +63,32 @@ describe Grammy do
 			g.rules[:a_or_b].children.should == [:a,:b]
 		end
 
+		it "should define grammar with repetition via range" do
+			g = Grammy.define :simple do
+				rule a: 'a'
+				rule b: 'b'
+				rule as_or_bs: (:a | :b)*(3..77)
+			end
+
+			g.rules[:as_or_bs].should be_a Grammar::Repetition
+			g.rules[:as_or_bs].repetitions.should == (3..77)
+			g.rules[:as_or_bs].children.length.should == 1
+			g.rules[:as_or_bs].children.first.should be_a Grammar::Alternatives
+		end
+
+		it "should define grammar with repetition via unary plus" do
+			g = Grammy.define :simple do
+				rule a: 'a'
+				rule b: 'b'
+				rule as_or_bs: +(:a | :b)
+			end
+
+			g.rules[:as_or_bs].should be_a Grammar::Repetition
+			g.rules[:as_or_bs].repetitions.should == (1..Grammar::MAX_REPETITION)
+			g.rules[:as_or_bs].children.length.should == 1
+			g.rules[:as_or_bs].children.first.should be_a Grammar::Alternatives
+		end
+
 		it "should define simple grammar" do
 			g = Grammy.define :simple do
 				rule digits: (0..9) * (0..16)
@@ -113,6 +139,18 @@ describe Grammy do
 				node.name.should == :lower
 			end
 
+			it "should match one or more characters" do
+				g = Grammy.define :simple do
+					helper lower: 'a'..'z'
+					rule string: +:lower
+				end
+
+				node = g.rules[:string].match("some",0)
+				node.should be_a AST::Node
+				node.match_range.should == (0..3)
+				node.name.should == :string
+			end
+
 			it "should match string without helper" do
 				g = Grammy.define :simple do
 					rule lower: 'a'..'z'
@@ -156,6 +194,19 @@ describe Grammy do
 			tree.children.should be_empty
 		end
 
+		it "should parse string with one or more characters" do
+			g = Grammy.define :simple do
+				helper lower: 'a'..'z'
+				rule string: +:lower
+			end
+
+			tree = g.parse("somelongerstring",rule: :string)
+
+			tree.data.should == "somelongerstring"
+			tree.to_s.should == "string{'somelongerstring'}\n"
+			tree.children.should be_empty
+		end
+
 		it "should parse string with sequence" do
 			g = Grammy.define :simple do
 				helper lower: 'a'..'z'
@@ -193,6 +244,10 @@ describe Grammy do
 			tree = g.parse("some_id0",rule: :ident)
 			tree.should be_a AST::Node
 			tree.data.should == "some_id0"
+		end
+
+		describe "using skipper" do
+			
 		end
 
 	end

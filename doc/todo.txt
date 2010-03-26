@@ -1,8 +1,30 @@
 
+Todo
 ==================================================
 ###  : Add logger and convert puts to debug messages
 ###  : Error report and hooks
 #### : optional rules: :identifier?
+#### : zero or more x: ~x
 #### : Ignore/skip parser: whitespaces & comments
+##   : support Regexp as rules
 ###  : GrammySpec: SpecFramework for grammars: expectations for acceptance and generated AST
+#    : Validate Grammar:
+		- check for left recursion
+		- check for never matching rules: ~a >> a (BNF: a* a) #=> never matches
+#    : Make DSL removable: alias_method, remove_method etc
+##   : Make constants accessible in grammar definition dsl
+##   : support exceptions: x: ('a'..'z')*3 - 'lol'
+#    : Conceptual Deficit: Grammar.define doesnt just define a grammar, it implicitly defines a parser too
+##   : track linenumbers for error report and compilation (semantic action?)
+##   : give tokens a name: :ident.name
+##   : Make predefined parsers available: use :string, :int, :float
+##   : Shortcut for: a >> (',' >> a)*;
+		- a % ','
+		- a / ','
+		- list(a,',') or list?(a,',')
+##   : automatically check for valid identifiers: insert identifiers into table and check identifiers against that table
+##   : automatically map matched input/strings to values by a symbol table
 
+Done
+==================================================
+#### : one or more: +x

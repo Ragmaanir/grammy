@@ -3,6 +3,8 @@ require 'ast'
 module Grammy
 	module Rules
 
+		MAX_REPETITION = 10_000
+
 		module Operators
 			def >>(other)
 				if other.is_a? Sequence and other.helper?
@@ -17,13 +19,18 @@ module Grammy
 			end
 			
 			def *(times)
-				times = times..times unless times.is_a? Range
+				times = times..times if times.is_a? Integer
+				raise("times must be a range or int but was: '#{times}'") unless times.is_a? Range
 				if self.is_a? Range
 					alt = Alternatives.new(nil,self, helper: true)
 					Repetition.new(nil,alt,times: times, helper: true)
 				else
 					Repetition.new(nil,self,times: times, helper: true)
 				end
+			end
+
+			def +@
+				Repetition.new(nil,self,times: 1..MAX_REPETITION, helper: true)
 			end
 		end
 
@@ -41,6 +48,7 @@ module Grammy
 				@options = options
 			end
 
+			# For debugging purposes: returns the classname
 			def rule_type
 				self.class.name.split('::').last
 			end
@@ -49,10 +57,13 @@ module Grammy
 				@options[:helper] = value
 			end
 
+			# true iff this rule is a helper rule. a rule is automatically a helper rule when it has no name.
+			# a helper rule generates no AST::Node
 			def helper?
 				(@options[:helper] || !name)
 			end
 
+			# true when the matched string should not be part of the generated AST (like ',' or '(')
 			def ignore?
 				!!@options[:ignore]
 			end
@@ -83,6 +94,37 @@ module Grammy
 					else
 						raise "#{rule_type}.match_element type error for: '#{elem}'"
 				end
+			end
+
+		end
+
+		#
+		# RULE WRAPPER rule
+		# Wraps a symbol which represents another rule which may be not defined yet.
+		# When the symbol ends with '?', then the rule is optional
+		class RuleWrapper < Rule
+			def initialize(name,sym,options={})
+				super(name,options)
+				raise("sym has to be a symbol but was: '#{sym}'") unless sym.is_a? Symbol
+				@optional = false
+				if sym[-1]=='?'
+					@optional = true
+					sym = sym[0..-2]
+				end
+				@symbol = sym
+			end
+
+			def optional?
+				@optional
+			end
+
+			def children
+				[@sym]
+			end
+
+			def match(stream,start_pos)
+				result = grammar.rules[elem].match(stream,start_pos)
+				# TODO optional rule
 			end
 
 		end
