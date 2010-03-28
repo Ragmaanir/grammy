@@ -1,9 +1,8 @@
 
 Todo
 ==================================================
-###  : Add logger and convert puts to debug messages
+
 ###  : Error report and hooks
-#### : optional rules: :identifier?
 #### : zero or more x: ~x
 #### : Ignore/skip parser: whitespaces & comments
 ##   : support Regexp as rules
@@ -24,7 +23,11 @@ Todo
 		- list(a,',') or list?(a,',')
 ##   : automatically check for valid identifiers: insert identifiers into table and check identifiers against that table
 ##   : automatically map matched input/strings to values by a symbol table
+#    : Optimize: stream[..] returns a copy that is only read and then garbage collected
+#    : Analyze grammar: potential ambiguities etc; style tips: +:asd? => *:asd
 
 Done
 ==================================================
 #### : one or more: +x
+#### : optional rules: :identifier?
+###  : Add logger and convert puts to debug messages

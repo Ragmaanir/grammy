@@ -1,15 +1,34 @@
 require 'ast'
 require 'rules'
+require 'log4r'
 
 class Grammar
-	attr_accessor :name
-	attr_reader :rules
+	include Log4r
 
-	def initialize(name,&block)
+	attr_accessor :name
+	attr_reader :rules, :logger
+
+	def initialize(name,options={},&block)
 		@name = name
 		@rules = {}
+		@logger = options[:logger]
 		
-		instance_exec(&block)
+		unless @logger
+			@logger = Log4r::Logger.new 'grammy'
+			outputter = Log4r::Outputter.stdout
+			outputter.formatter = PatternFormatter.new :pattern => "%l - %x - %m"
+			@logger.outputters = outputter
+			@logger.level = WARN
+			
+		end
+
+		begin
+			instance_exec(&block)
+		rescue Exception => e
+			puts e
+			puts e.backtrace
+			raise e
+		end
 	end
 
 	module DSL
@@ -22,23 +41,8 @@ class Grammar
 
 		def rule(options)
 			name,defn = options.shift
-			
-			case defn
-				when Range
-					rule = Alternatives.new(name,defn.to_a,options)
-				when Array
-					rule = Alternatives.new(name,defn,options)
-				when String
-					rule = Sequence.new(name,[defn],options)
-				when Symbol
-					#raise "empty rule: #{name}"
-					puts "warning: empty rule '#{name}'"
-					rule = @rules[name] || raise("rule '#{defn}' not found in rule '#{name}'")
-				when Rule
-					rule = defn
-			else
-				raise "invalid rule definition type: '#{defn.class}'"
-			end
+
+			rule = Rule.to_rule(defn)
 
 			rule.grammar = self
 			rule.name = name
@@ -51,22 +55,35 @@ class Grammar
 			rule(options.merge(helper: true))
 		end
 
+		def start(options)
+			@start_rule = rule(options)
+		end
+
 	end
 
 	include DSL
 
-	def parse(stream,options)
-		rule = @rules[options[:rule]] || raise("rule '#{options[:rule]}' not found")
+	def debug!
+		@logger.level = DEBUG
+	end
+
+	def parse(stream,options={})
+		raise("no start rule supplied") unless @start_rule || options[:rule]
+		rule = @start_rule
+		rule = @rules[options[:rule]] || raise("rule '#{options[:rule]}' not found") if options[:rule]
+
+		logger.debug("##### Parsing(#{options[:rule]}): \"#{stream}\"")
 
 		begin
-			tree = rule.match(stream,0)
+			match = rule.match(stream,0)
 		rescue Exception => e
 			puts e
 			puts e.backtrace
 		end
-		
-		tree = rule.match(stream,0)
-		tree
+
+		logger.debug("##### success: #{match.success?}")
+
+		match
 	end
 	
 end

@@ -1,4 +1,5 @@
 require 'ast'
+require 'match_result'
 
 module Grammy
 	module Rules
@@ -7,11 +8,7 @@ module Grammy
 
 		module Operators
 			def >>(other)
-				if other.is_a? Sequence and other.helper?
-					Sequence.new(nil,[self]+other.sequence, helper: true)
-				else
-					Sequence.new(nil,[self,other], helper: true)
-				end
+				Sequence.new(nil,[self,other], helper: true)
 			end
 
 			def |(other)
@@ -21,12 +18,8 @@ module Grammy
 			def *(times)
 				times = times..times if times.is_a? Integer
 				raise("times must be a range or int but was: '#{times}'") unless times.is_a? Range
-				if self.is_a? Range
-					alt = Alternatives.new(nil,self, helper: true)
-					Repetition.new(nil,alt,times: times, helper: true)
-				else
-					Repetition.new(nil,self,times: times, helper: true)
-				end
+				
+				Repetition.new(nil,Rule.to_rule(self),times: times, helper: true)
 			end
 
 			def +@
@@ -39,6 +32,8 @@ module Grammy
 		#
 		class Rule
 			include Operators
+
+			SourceTypes = [Rule,Array,Range,String,Integer,Symbol]
 
 			attr_accessor :name, :options
 			attr_reader :grammar
@@ -80,22 +75,113 @@ module Grammy
 				}
 			end
 
-			def match_element(elem,stream,start_pos)
-				#puts "#{rule_type}.match_element('#{elem}','#{stream[start_pos..(-1)]}',#{start_pos})"
-				case elem
-					when Rule
-						elem.match(stream,start_pos)
-					when Symbol
-						grammar.rules[elem].match(stream,start_pos)
-					when String
-						range = start_pos..(start_pos+(elem.length-1))
-						# TODO add ability to create custom node MyNode < Node
-						AST::Node.new(:_str, match_range: range, merge: true, stream: stream) if elem == stream[range]
-					else
-						raise "#{rule_type}.match_element type error for: '#{elem}'"
+			def self.to_rule(input)
+				case input
+				when Range then RangeRule.new(:_range,input,helper: true)
+				when Array then Alternatives.new(nil,input, helper: true)
+				when Symbol then RuleWrapper.new(input,helper: true)
+				when String then StringRule.new(input,helper: true)
+				when Integer then StringRule.new(input.to_s,helper: true)
+				when Rule then input
+				else
+					raise "invalid input '#{input}', cant convert to a rule"
 				end
 			end
 
+			def to_s
+				rule_type + '{' + children.join(',') + '}'
+			end
+
+			def debug_start(stream,start)
+				str = case rule_type
+					when "Sequence" then "Seq"
+					when "Alternatives" then "Alt"
+					when "RangeRule" then "Ran"
+					when "RuleWrapper" then "Wrp"
+					when "StringRule" then "Str"
+					when "Repetition" then "Rep"
+					else raise
+				end
+
+
+				Log4r::NDC.push(name || ':'+str)
+				grammar.logger.debug("#{str}.match('#{stream[start..-1]}',#{start})")
+			end
+
+			def debug_end(match)
+				data = match.ast_node.data if match.ast_node
+				grammar.logger.debug("--> success: #{match.success?} => '#{data}',#{match.match_range}")
+				Log4r::NDC.pop
+			end
+		end
+
+		#
+		# RangeRule
+		#
+		class RangeRule < Rule
+			def initialize(name,range,options={})
+				super(name,options)
+				raise "range must be range but was: '#{range}'" unless range.is_a? Range
+				@range = range
+			end
+
+			def range
+				@range
+			end
+
+			def children
+				[]
+			end
+
+			def match(stream,start_pos)
+				debug_start(stream,start_pos)
+				success = false
+				range = start_pos..start_pos
+
+				matched_element = @range.find { |e|
+					range = start_pos..(start_pos+(e.length-1))
+					success = (e == stream[range])
+				}
+
+				range = start_pos..start_pos unless success
+
+				node = AST::Node.new(name, match_range: range, merge: helper?, stream: stream) if success
+				match = MatchResult.new(self,success,node,range)
+				debug_end(match)
+				match
+			end
+		end
+
+		#
+		# StringRule
+		# 
+		class StringRule < Rule
+			def initialize(string,options={})
+				super(nil,options)
+				raise unless string.is_a? String
+				@string = string
+			end
+
+			def string
+				@string
+			end
+
+			def children
+				[]
+			end
+
+			def match(stream,start_pos)
+				debug_start(stream,start_pos)
+				range = start_pos..(start_pos+(@string.length-1))
+				success = (@string == stream[range])
+				range = start_pos..start_pos unless success
+				
+				node = AST::Node.new(:_str, match_range: range, merge: true, stream: stream) if success
+				match = MatchResult.new(self,success,node,range)
+
+				debug_end(match)
+				match
+			end
 		end
 
 		#
@@ -103,28 +189,55 @@ module Grammy
 		# Wraps a symbol which represents another rule which may be not defined yet.
 		# When the symbol ends with '?', then the rule is optional
 		class RuleWrapper < Rule
-			def initialize(name,sym,options={})
-				super(name,options)
+			def initialize(sym,options={})
+				super(nil,options) # FIXME pass the name?
 				raise("sym has to be a symbol but was: '#{sym}'") unless sym.is_a? Symbol
 				@optional = false
 				if sym[-1]=='?'
 					@optional = true
-					sym = sym[0..-2]
+					sym = sym[0..-2].to_sym
 				end
 				@symbol = sym
+			end
+
+			def name
+				#rule.name
+				@symbol
 			end
 
 			def optional?
 				@optional
 			end
 
+			def grammar=(gr)
+				# dont set grammar for children because the wrapped rule might not be defined yet
+				@grammar = gr
+			end
+
 			def children
-				[@sym]
+				rule.children
+			end
+
+			def rule
+				#grammar.logger.debug grammar.rules.to_s
+				grammar.rules[@symbol] || raise("RuleWrapper: rule not found '#{@symbol}'")
 			end
 
 			def match(stream,start_pos)
-				result = grammar.rules[elem].match(stream,start_pos)
-				# TODO optional rule
+				debug_start(stream,start_pos)
+
+				grammar.logger.debug name
+				grammar.logger.debug rule
+				
+				match_result = rule.match(stream,start_pos)
+
+				success = match_result.success? || optional?
+
+				# FIXME maybe create an AST Node and store it in match result?
+				match = MatchResult.new(self, success, match_result.ast_node, match_result.match_range)
+
+				debug_end(match)
+				match
 			end
 
 		end
@@ -134,7 +247,16 @@ module Grammy
 		#
 		class Sequence < Rule
 			def initialize(name,seq,options={})
-				raise "seq.class must be in [Symbol,Rule,Array,String]" unless [Symbol,Rule,Array,String].member? seq.class
+				#raise "seq.class must be in #{Rule::SourceTypes} but was #{seq.class}" unless Rule::SourceTypes.member? seq.class
+				seq = seq.map{|elem| 
+					if elem.is_a? Sequence and elem.helper?
+						elem.children
+					else
+						elem
+					end
+				}.flatten
+				
+				seq = seq.map{|elem| Rule.to_rule(elem) }
 				@sequence = seq
 				super(name,options)
 			end
@@ -144,54 +266,45 @@ module Grammy
 			end
 
 			def match(stream,start_pos)
-				nodes = []
+				debug_start(stream,start_pos)
+				
+				match_results = [] # will store the MatchResult of each rule of the sequence
 				cur_pos = start_pos
-
-				print "#{rule_type}.match(#{stream},#{start_pos})"
 
 				# TODO add ability to create custom node MyNode < Node
 				node = AST::Node.new(name, merge: helper?, stream: stream)
 
+				# --find the first rule in the sequence that fails to match the input
+				# - add the results of all succeeding rules to the match_results array
 				failed = @sequence.find { |e|
-					result = match_element(e,stream,cur_pos)
-					if result
-						nodes << result
-						
-						cur_pos = result.match_range.end + 1
+					match_result = e.match(stream,cur_pos)
+					if match_result.success?
+						match_results << match_result
+
+						cur_pos = match_result.match_range.end + 1
 					end
 
-					:exit if not result
+					:exit if match_result.fail? # end loop
 				}
 
-				if failed
-					puts "-> failed"
-				else
-					puts "-> success"
-				end
+				match_results.each{|res| node.add_child(res.ast_node) }
+				range = start_pos..(cur_pos-1)
+				node.match_range = range #start_pos..(cur_pos-1)
 
-				unless failed
-					nodes.each{|n| node.add_child(n) }
-					node.match_range = start_pos..(cur_pos-1)
-					node
-				end
+				match = MatchResult.new(self,!failed,node,range)
+
+				debug_end(match)
+				match
 			end
+
 		end
 
 		# ALTERNATIVE
 		class Alternatives < Rule
 			def initialize(name,alts,options={})
-				raise "alts.class must be in [Symbol,Rule,Array,Range]" unless [Symbol,Rule,Array,Range].member? alts.class
+				#raise "alts.class must be in #{Rule::SourceTypes} but was #{alts.class}" unless Rule::SourceTypes.member? alts.class
 
-				@alternatives = alts.map{|r|
-					case r
-						when Range, Array
-							Alternatives.new(nil,r,helper: true)
-						when Rule,String,Symbol,Integer
-							r
-					else
-						raise "invalid type: #{r}"
-					end
-				}
+				@alternatives = alts.map{|r| Rule.to_rule(r) }
 				super(name,options)
 			end
 
@@ -200,34 +313,34 @@ module Grammy
 			end
 
 			def match(stream,start_pos)
-				print "#{rule_type}.match('#{stream}',#{start_pos})"
-				result = nil
+				debug_start(stream,start_pos)
+				match_result = nil
+				other_results = [] # stores all failed matches of other alternatives
 				# TODO add ability to create custom node MyNode < Node
 				node = AST::Node.new(name, merge: helper?, stream: stream)
-				
-				success = @alternatives.find { |e|
-					result = match_element(e,stream,start_pos)
-				}
 
-				if success
-					puts "-> matched '#{success}', match_range: #{result.match_range}"
-				else
-					puts "-> failed"
-				end
+				success = @alternatives.find { |e|
+					match_result = e.match(stream,start_pos)
+					other_results << match_result if match_result.fail?
+					match_result.success?
+				}
 				
-				if success
-					node.add_child(result)
-					node.match_range = result.match_range
-					node
-				end
+				node.add_child(match_result.ast_node) if match_result.ast_node
+				node.match_range = match_result.match_range
+
+				match = MatchResult.new(self,!!success,node,match_result.match_range)
+				debug_end(match)
+				match
 			end
+
 		end
 
 		# REPETITION
 		class Repetition < Rule
 			def initialize(name,rule,options={})
 				#raise "rule.class must be in [Symbol,Rule,Array,String]" unless [Symbol,Rule,Array,Range].member? alts.class
-				raise "rule must be a rule, symbol or range" unless rule.kind_of? Rule or [Symbol,Range,String].include? rule.class
+				#raise "rule must be in #{Rule::SourceTypes} but was #{rule.class}" unless Rule::SourceTypes.include? rule.class
+				rule = Rule.to_rule(rule)
 				@rule = rule
 				super(name,options)
 			end
@@ -241,39 +354,39 @@ module Grammy
 			end
 
 			def match(stream,start_pos)
-				failed = false
+				success = false # set to true when repetition in specified range
+				failed = false # used for the loop
 				cur_pos = start_pos
 
 				# TODO add ability to create custom node MyNode < Node
 				node = AST::Node.new(name, merge: helper?, stream: stream)
-				nodes = []
+				match_results = []
 
-				print "#{rule_type}.match(#{stream},#{start_pos})"
+				debug_start(stream,start_pos)
 
-				while not failed and nodes.length < repetitions.max
-					result = match_element(@rule,stream,cur_pos)
+				while not failed and match_results.length < repetitions.max
+					match_result = @rule.match(stream,cur_pos)
 
-					if result
-						nodes << result
-						
-						cur_pos = result.match_range.end + 1
+					if match_result.success?
+						match_results << match_result
+
+						cur_pos = match_result.match_range.end + 1
 					else
+						# TODO store failed match?
 						failed = true
 					end
 				end
 
-				if repetitions.include? nodes.length
-					puts "-> success: #{nodes.length} repetitions"
-				else
-					puts "-> failed"
-				end
+				success = repetitions.include? match_results.length
 				
-				if repetitions.include? nodes.length
-					nodes.each{|n| node.add_child(n) }
-					node.match_range = start_pos..(cur_pos-1) # TODO compute when adding children?
-					node
-				end
+				match_results.each{|res| node.add_child(res.ast_node) }
+				node.match_range = start_pos..(cur_pos-1) # TODO compute when adding children?
+
+				match = MatchResult.new(self, !!success, node, start_pos..(cur_pos-1))
+				debug_end(match)
+				match
 			end
+
 		end
 
 	end # module Rules
