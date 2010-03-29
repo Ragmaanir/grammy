@@ -60,6 +60,21 @@ describe Grammy do
 			token_r.children[2].rule.string.should == 'a'
 		end
 
+		it "should define sequence grammar with skipper" do
+			g = Grammy.define :simple do
+				skipper whitespace: ' ' | "\n" | "\t"
+
+				token a: 'ab'
+				start start: :a >> :a >> :a
+			end
+
+			g.skipper.should be_a Grammar::Alternatives
+			g.skipper.should be_helper
+			g.skipper.should be_ignored
+			g.rules[:a].should_not be_skipping
+			g.rules[:start].should be_skipping
+		end
+
 		it "should define grammar with long sequence of same rule via concat" do
 			g = Grammy.define :simple do
 				helper a: 'ab'
@@ -136,7 +151,7 @@ describe Grammy do
 
 			as_or_bs_r = g.rules[:as_or_bs]
 			as_or_bs_r.should be_a Grammar::Repetition
-			as_or_bs_r.repetitions.should == (1..Grammar::MAX_REPETITION)
+			as_or_bs_r.repetitions.should == (1..Grammar::MAX_REPETITIONS)
 			as_or_bs_r.children.length.should == 1
 			as_or_bs_r.children.first.should be_a Grammar::Alternatives
 		end
@@ -153,6 +168,29 @@ describe Grammy do
 			start_r.children.length.should == 2
 			start_r.children.first.should be_a Grammar::RuleWrapper
 			start_r.children.first.should be_optional
+		end
+
+		it "should define grammar with list-helper" do
+			g = Grammy.define :simple do
+				rule item: ('a'..'z')*(2..8)
+				start start: list(:item)
+			end
+
+			start = g.rules[:start]
+			start.should be_a Grammar::Sequence
+			start.children.length.should == 2
+			start.children[0].should be_a Grammar::RuleWrapper
+			start.children[0].name.should == :item
+			start.children[1].should be_a Grammar::Repetition
+			start.children[1].repetitions.should == (0..1000)
+			start.children[1].children.length.should == 1
+
+			params = start.children[1].children[0]
+			params.should be_a Grammar::Sequence
+			params.children.length.should == 2
+			params.children[0].should be_a Grammar::StringRule
+			params.children[1].should be_a Grammar::RuleWrapper
+			params.children[1].name.should == :item
 		end
 
 		it "should define grammar with helper rule" do
@@ -283,12 +321,10 @@ describe Grammy do
 					rule a: 'a'
 					start char: :a?
 				end
-
-				g.debug!
 				
-				#g.parse('').should be_success
-				#g.parse('a').should be_success
-				#g.parse('ac').should be_success
+				g.parse('').should be_success
+				g.parse('a').should be_success
+				g.parse('ac').should be_success
 				g.parse('b').should be_fail
 				g.parse('ba').should be_fail
 			end
@@ -393,6 +429,63 @@ describe Grammy do
 				].each { |input|
 					g.parse(input).should be_fail
 				}
+			end
+
+			it "should parse comma seperated list" do
+				g = Grammy.define :simple do
+					rule item: ('a'..'z')*(2..8)
+					start start: :item >> (',' >> :item)*(0..10)
+				end
+
+				g.parse("").should be_fail
+
+				[
+					"first",
+					"first,second",
+					"first,second,third"
+				].each { |input|
+					g.parse(input).should be_success
+				}
+			end
+
+			it "should parse comma seperated list with list-helper" do
+				g = Grammy.define :simple do
+					rule item: ('a'..'z')*(2..8)
+					start start: list(:item)
+				end
+
+				g.parse("").should be_fail
+
+				[
+					"first",
+					"first,second",
+					"first,second,third"
+				].each { |input|
+					g.parse(input).should be_success
+				}
+			end
+
+			it "should parse sequence with skipper" do
+				g = Grammy.define :simple do
+					skipper whitespace: +(' ' | "\n" | "\t")
+
+					token a: 'ab'
+					start start: :a >> :a >> :a
+				end
+
+				g.parse("ab   ab   \n\tab").should be_success
+				g.parse("ab\nab\t  ab").should be_success
+			end
+
+			it "should parse and only skip in rules" do
+				g = Grammy.define :simple do
+					skipper whitespace: +(' ' | "\n" | "\t")
+
+					token a: 'ab d'
+					start start: +:a
+				end
+
+				g.parse("ab d\t\n ab d").should be_success
 			end
 		end
 
@@ -503,6 +596,50 @@ describe Grammy do
 			tree = g.parse("some_id0").ast_node
 			tree.should be_a AST::Node
 			tree.data.should == "some_id0"
+		end
+
+		it "should parse sequence grammar with skipper and not create nodes for skipper" do
+			g = Grammy.define :simple do
+				skipper whitespace: +(' ' | "\n" | "\t")
+
+				token a: 'ab'
+				start start: :a >> :a >> :a
+			end
+
+			g.debug!
+			
+			match = g.parse("ab\nab\t  ab")
+			root = match.ast_node
+
+			match.should be_success
+			root.data.should == "ab\nab\t  ab"
+			root.name.should == :start
+			root.children.length.should == 3
+			root.children[0].name.should == :a
+			root.children[0].data.should == 'ab'
+		end
+
+		it "should parse sequence grammar with skipper and create nodes for tokens" do
+			g = Grammy.define :simple do
+				skipper whitespace: +(' ' | "\n" | "\t")
+
+				token a: 'ab' | 'xy'
+				start start: :a >> :a >> :a
+			end
+
+			g.debug!
+
+			match = g.parse("ab\nxy\t  ab")
+			root = match.ast_node
+
+			match.should be_success
+			root.data.should == "ab\nxy\t  ab"
+			root.name.should == :start
+			root.children.length.should == 3
+			root.children[0].name.should == :a
+			root.children[0].data.should == 'ab'
+			root.children[1].name.should == :a
+			root.children[1].data.should == 'xy'
 		end
 	end
 

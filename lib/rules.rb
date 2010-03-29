@@ -4,9 +4,47 @@ require 'match_result'
 module Grammy
 	module Rules
 
-		MAX_REPETITION = 10_000
+		MAX_REPETITIONS = 10_000
 
 		module Operators
+
+			def self.included(target)
+				cloned_mod = self.clone
+				my_mod_name = name
+
+				# store the module that is included
+				target.class_eval {
+					@@removable_modules ||= {}
+					@@removable_modules[my_mod_name] = cloned_mod
+				}
+
+				# make backup of already defined methods
+				cloned_mod.instance_methods.each {|imeth|
+					if target.instance_methods.include? imeth
+						target.send(:alias_method,"__#{imeth}_backup",imeth)
+					end
+				}
+
+				cloned_mod.send(:append_features,target)
+			end
+
+			def self.exclude(target)
+				# get the module
+				mod = target.send(:class_eval){
+					@@removable_modules
+				}[name] || raise("module '#{name}' not found in internal hash, cant exclude it")
+
+				# remove / restore the methods
+				mod.instance_methods.each {|imeth|
+					mod.send(:undef_method,imeth)
+
+					if target.instance_methods.include? "__#{imeth}_backup"
+						target.send(:alias_method,imeth,"__#{imeth}_backup")
+						target.send(:undef_method,"__#{imeth}_backup")
+					end
+				}
+			end
+
 			def >>(other)
 				Sequence.new(nil,[self,other], helper: true)
 			end
@@ -14,16 +52,16 @@ module Grammy
 			def |(other)
 				Alternatives.new(nil,[self,other], helper: true)
 			end
-			
+
 			def *(times)
 				times = times..times if times.is_a? Integer
 				raise("times must be a range or int but was: '#{times}'") unless times.is_a? Range
-				
+
 				Repetition.new(nil,Rule.to_rule(self),times: times, helper: true)
 			end
 
 			def +@
-				Repetition.new(nil,self,times: 1..MAX_REPETITION, helper: true)
+				Repetition.new(nil,self,times: 1..MAX_REPETITIONS, helper: true)
 			end
 		end
 
@@ -58,9 +96,23 @@ module Grammy
 				(@options[:helper] || !name)
 			end
 
+			def skipping=(value)
+				raise "invalid skipping value: '#{value}'" unless [true,false].include? value
+				@options[:skipping] = value
+			end
+
+			def skipping?
+				grammar.skipper and @options[:skipping]
+			end
+
+			def ignored=value
+				raise unless [true,false].member? value
+				@options[:ignored] = value
+			end
+
 			# true when the matched string should not be part of the generated AST (like ',' or '(')
-			def ignore?
-				!!@options[:ignore]
+			def ignored?
+				@options[:ignored]
 			end
 
 			def children
@@ -73,6 +125,16 @@ module Grammy
 				children.each{|rule|
 					rule.grammar= gr if rule.kind_of? Rule
 				}
+			end
+
+			def skip(stream,start)
+				match = grammar.skipper.match(stream,start)
+				
+				if match.success?
+					match.match_range.end + 1
+				else
+					match.match_range.begin
+				end
 			end
 
 			def self.to_rule(input)
@@ -105,12 +167,12 @@ module Grammy
 
 
 				Log4r::NDC.push(name || ':'+str)
-				grammar.logger.debug("#{str}.match('#{stream[start..-1]}',#{start})")
+				grammar.logger.debug("#{str}.match(#{stream[start..-1].inspect},#{start})")
 			end
 
 			def debug_end(match)
 				data = match.ast_node.data if match.ast_node
-				grammar.logger.debug("--> success: #{match.success?} => '#{data}',#{match.match_range}")
+				grammar.logger.debug("--> success: #{match.success?} => #{data.inspect},#{match.match_range}")
 				Log4r::NDC.pop
 			end
 		end
@@ -145,7 +207,7 @@ module Grammy
 
 				range = start_pos..start_pos unless success
 
-				node = AST::Node.new(name, match_range: range, merge: helper?, stream: stream) if success
+				node = AST::Node.new(name, match_range: range, merge: helper?, stream: stream) if success and not ignored?
 				match = MatchResult.new(self,success,node,range)
 				debug_end(match)
 				match
@@ -176,7 +238,7 @@ module Grammy
 				success = (@string == stream[range])
 				range = start_pos..start_pos unless success
 				
-				node = AST::Node.new(:_str, match_range: range, merge: true, stream: stream) if success
+				node = AST::Node.new(name || :_str, match_range: range, merge: helper?, stream: stream) if success and not ignored?
 				match = MatchResult.new(self,success,node,range)
 
 				debug_end(match)
@@ -219,15 +281,11 @@ module Grammy
 			end
 
 			def rule
-				#grammar.logger.debug grammar.rules.to_s
 				grammar.rules[@symbol] || raise("RuleWrapper: rule not found '#{@symbol}'")
 			end
 
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
-
-				grammar.logger.debug name
-				grammar.logger.debug rule
 				
 				match_result = rule.match(stream,start_pos)
 
@@ -235,7 +293,7 @@ module Grammy
 
 				# FIXME maybe create an AST Node and store it in match result?
 				match = MatchResult.new(self, success, match_result.ast_node, match_result.match_range)
-
+				
 				debug_end(match)
 				match
 			end
@@ -271,12 +329,10 @@ module Grammy
 				match_results = [] # will store the MatchResult of each rule of the sequence
 				cur_pos = start_pos
 
-				# TODO add ability to create custom node MyNode < Node
-				node = AST::Node.new(name, merge: helper?, stream: stream)
-
 				# --find the first rule in the sequence that fails to match the input
 				# - add the results of all succeeding rules to the match_results array
 				failed = @sequence.find { |e|
+					cur_pos = skip(stream,cur_pos) if skipping?
 					match_result = e.match(stream,cur_pos)
 					if match_result.success?
 						match_results << match_result
@@ -287,9 +343,14 @@ module Grammy
 					:exit if match_result.fail? # end loop
 				}
 
-				match_results.each{|res| node.add_child(res.ast_node) }
 				range = start_pos..(cur_pos-1)
-				node.match_range = range #start_pos..(cur_pos-1)
+
+				unless ignored?
+					# TODO add ability to create custom node MyNode < Node
+					node = AST::Node.new(name, merge: helper?, stream: stream)
+					match_results.each{|res| node.add_child(res.ast_node) }
+					node.match_range = range #start_pos..(cur_pos-1)
+				end
 
 				match = MatchResult.new(self,!failed,node,range)
 
@@ -316,17 +377,20 @@ module Grammy
 				debug_start(stream,start_pos)
 				match_result = nil
 				other_results = [] # stores all failed matches of other alternatives
-				# TODO add ability to create custom node MyNode < Node
-				node = AST::Node.new(name, merge: helper?, stream: stream)
 
 				success = @alternatives.find { |e|
+					start_pos = skip(stream,start_pos) if skipping?
 					match_result = e.match(stream,start_pos)
 					other_results << match_result if match_result.fail?
 					match_result.success?
 				}
-				
-				node.add_child(match_result.ast_node) if match_result.ast_node
-				node.match_range = match_result.match_range
+
+				unless ignored?
+					# TODO add ability to create custom node MyNode < Node
+					node = AST::Node.new(name, merge: helper?, stream: stream)
+					node.add_child(match_result.ast_node) if match_result.ast_node
+					node.match_range = match_result.match_range
+				end
 
 				match = MatchResult.new(self,!!success,node,match_result.match_range)
 				debug_end(match)
@@ -358,13 +422,13 @@ module Grammy
 				failed = false # used for the loop
 				cur_pos = start_pos
 
-				# TODO add ability to create custom node MyNode < Node
-				node = AST::Node.new(name, merge: helper?, stream: stream)
+				
 				match_results = []
 
 				debug_start(stream,start_pos)
 
 				while not failed and match_results.length < repetitions.max
+					cur_pos = skip(stream,cur_pos) if skipping?
 					match_result = @rule.match(stream,cur_pos)
 
 					if match_result.success?
@@ -379,8 +443,12 @@ module Grammy
 
 				success = repetitions.include? match_results.length
 				
-				match_results.each{|res| node.add_child(res.ast_node) }
-				node.match_range = start_pos..(cur_pos-1) # TODO compute when adding children?
+				unless ignored?
+					# TODO add ability to create custom node MyNode < Node
+					node = AST::Node.new(name, merge: helper?, stream: stream)
+					match_results.each{|res| node.add_child(res.ast_node) }
+					node.match_range = start_pos..(cur_pos-1) # TODO compute when adding children?
+				end
 
 				match = MatchResult.new(self, !!success, node, start_pos..(cur_pos-1))
 				debug_end(match)

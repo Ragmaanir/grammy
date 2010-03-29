@@ -19,38 +19,70 @@ class Grammar
 			outputter.formatter = PatternFormatter.new :pattern => "%l - %x - %m"
 			@logger.outputters = outputter
 			@logger.level = WARN
-			
 		end
 
 		begin
-			instance_exec(&block)
+			use_dsl do
+				instance_exec(&block)
+			end
 		rescue Exception => e
+			# TODO debug only
 			puts e
 			puts e.backtrace
 			raise e
 		end
 	end
 
+	def use_dsl(&block)
+		self.class.send(:include,DSL)
+
+		Symbol.send(:include,Operators)
+		String.send(:include,Operators)
+		Range.send(:include,Operators)
+
+		yield
+
+		Operators.exclude(Symbol)
+		Operators.exclude(Range)
+		Operators.exclude(String)
+	end
+
 	module DSL
 
 		include Grammy::Rules
 
-		Symbol.__send__(:include,Operators)
-		String.__send__(:include,Operators)
-		Range.__send__(:include,Operators)
-
 		def rule(options)
 			name,defn = options.shift
+
+			options = {skipping: true, helper: false, ignored: false}.merge(options)
 
 			rule = Rule.to_rule(defn)
 
 			rule.grammar = self
 			rule.name = name
 			rule.helper = options[:helper] || false
+			rule.skipping = options[:skipping]
+			rule.ignored = options[:ignored]
 			raise "duplicate rule #{name}" if @rules[name]
 			@rules[name] = rule
 		end
 
+		def skipper(options={})
+			if options == {}
+				@skipper
+			else
+				@skipper = helper(options.merge(skipping: false, ignored: true))
+			end
+		end
+
+		# creates a rule which does not use the skipper
+		def token(options)
+			rule(options.merge(skipping: false, helper: false))
+		end
+
+		# creates a rule with the helper: true option
+		# the rule creates mergeable AST nodes, e.g. for letters:
+		#		+('a'..'z') #=> creates only one AST node, not one for each letter
 		def helper(options)
 			rule(options.merge(helper: true))
 		end
@@ -59,12 +91,24 @@ class Grammar
 			@start_rule = rule(options)
 		end
 
-	end
+		def list(rule,sep=',',options={})
+			range = options[:range] || 0..1000
+			result = rule >> (sep >> rule)*range
+			# TODO store AST nodes in a list?
+			result
+		end
 
-	include DSL
+	end
 
 	def debug!
 		@logger.level = DEBUG
+	end
+
+	def validate
+		raise "not implemented" # TODO implement
+		# check for always fail		: ~:a >> :a
+		# check for left recursion: x: :x | :y
+		
 	end
 
 	def parse(stream,options={})
@@ -72,13 +116,15 @@ class Grammar
 		rule = @start_rule
 		rule = @rules[options[:rule]] || raise("rule '#{options[:rule]}' not found") if options[:rule]
 
-		logger.debug("##### Parsing(#{options[:rule]}): \"#{stream}\"")
+		logger.debug("##### Parsing(#{options[:rule]}): #{stream.inspect}")
 
 		begin
 			match = rule.match(stream,0)
 		rescue Exception => e
+			# TODO debug only
 			puts e
 			puts e.backtrace
+			raise e
 		end
 
 		logger.debug("##### success: #{match.success?}")

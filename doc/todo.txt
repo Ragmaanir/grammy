@@ -4,23 +4,20 @@ Todo
 
 ###  : Error report and hooks
 #### : zero or more x: ~x
-#### : Ignore/skip parser: whitespaces & comments
+###  : AST Node naming & reordering: use '^', '<=>' ?
 ##   : support Regexp as rules
 ###  : GrammySpec: SpecFramework for grammars: expectations for acceptance and generated AST
 #    : Validate Grammar:
 		- check for left recursion
 		- check for never matching rules: ~a >> a (BNF: a* a) #=> never matches
-#    : Make DSL removable: alias_method, remove_method etc
+#    : optional rules: :a >> [(',' >> :a)+] # change [x,y] from alternative to optional
 ##   : Make constants accessible in grammar definition dsl
 ##   : support exceptions: x: ('a'..'z')*3 - 'lol'
 #    : Conceptual Deficit: Grammar.define doesnt just define a grammar, it implicitly defines a parser too
 ##   : track linenumbers for error report and compilation (semantic action?)
 ##   : give tokens a name: :ident.name
 ##   : Make predefined parsers available: use :string, :int, :float
-##   : Shortcut for: a >> (',' >> a)*;
-		- a % ','
-		- a / ','
-		- list(a,',') or list?(a,',')
+
 ##   : automatically check for valid identifiers: insert identifiers into table and check identifiers against that table
 ##   : automatically map matched input/strings to values by a symbol table
 #    : Optimize: stream[..] returns a copy that is only read and then garbage collected
@@ -28,6 +25,12 @@ Todo
 
 Done
 ==================================================
+#### : Ignore/skip parser: whitespaces & comments
+##   : Make DSL removable: alias_method, remove_method etc
 #### : one or more: +x
 #### : optional rules: :identifier?
 ###  : Add logger and convert puts to debug messages
+##   : Shortcut for: a >> (',' >> a)*;
+		- a % ','
+		- a / ','
+		- list(a,',') or list?(a,',') #=> chosen list(a,',')

@@ -24,6 +24,11 @@ class AST
 		def leaf_node?
 			@children.empty?
 		end
+
+		def merge=(value)
+			raise("invalid value for merge: '#{value}'") unless [true,false].include? value
+			@merge = value
+		end
 		
 		def merge?
 			@merge
@@ -34,6 +39,7 @@ class AST
 			raise "node is no Node: '#{node}'" unless node.is_a? Node
 			if node.merge?
 				#@children = @children + node.children
+				puts "#{@children.inspect} << #{node.inspect}"
 				@children.concat(node.children)
 			else
 				@children << node
