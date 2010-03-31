@@ -39,7 +39,6 @@ class AST
 			raise "node is no Node: '#{node}'" unless node.is_a? Node
 			if node.merge?
 				#@children = @children + node.children
-				puts "#{@children.inspect} << #{node.inspect}"
 				@children.concat(node.children)
 			else
 				@children << node

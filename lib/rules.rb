@@ -28,6 +28,9 @@ module Grammy
 				cloned_mod.send(:append_features,target)
 			end
 
+			# removes the module from the target by
+			# removing added methods and aliasing the backup
+			# methods with their original name
 			def self.exclude(target)
 				# get the module
 				mod = target.send(:class_eval){
@@ -43,6 +46,12 @@ module Grammy
 						target.send(:undef_method,"__#{imeth}_backup")
 					end
 				}
+			end
+
+			def &(other)
+				left = Rule.to_rule(self)
+				left.backtracking = false
+				Sequence.new(nil,[left,other], helper: true)
 			end
 
 			def >>(other)
@@ -95,6 +104,15 @@ module Grammy
 			def helper?
 				(@options[:helper] || !name)
 			end
+			
+			def backtracking=(value)
+				raise "invalid backtracking value: '#{value}'" unless [true,false].include? value
+				@options[:backtracking] = value
+			end
+
+			def backtracking?
+				@options[:backtracking]
+			end
 
 			def skipping=(value)
 				raise "invalid skipping value: '#{value}'" unless [true,false].include? value
@@ -131,9 +149,9 @@ module Grammy
 				match = grammar.skipper.match(stream,start)
 				
 				if match.success?
-					match.match_range.end + 1
+					match.end_pos + 1
 				else
-					match.match_range.begin
+					match.start_pos
 				end
 			end
 
@@ -165,14 +183,14 @@ module Grammy
 					else raise
 				end
 
-
 				Log4r::NDC.push(name || ':'+str)
 				grammar.logger.debug("#{str}.match(#{stream[start..-1].inspect},#{start})")
 			end
 
 			def debug_end(match)
 				data = match.ast_node.data if match.ast_node
-				grammar.logger.debug("--> success: #{match.success?} => #{data.inspect},#{match.match_range}")
+				result = match.success? ? "SUCCESS" : "FAIL"
+				grammar.logger.debug("--> #{result} => #{data.inspect},#{match.start_pos}..#{match.end_pos}")
 				Log4r::NDC.pop
 			end
 		end
@@ -198,11 +216,12 @@ module Grammy
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
 				success = false
-				range = start_pos..start_pos
+				#range = start_pos..start_pos
 
-				matched_element = @range.find { |e|
-					range = start_pos..(start_pos+(e.length-1))
-					success = (e == stream[range])
+				@range.find { |e|
+					#range = start_pos..(start_pos+(e.length-1))
+					#success = (e == stream[range])
+					success = (e == stream[start_pos,e.length])
 				}
 
 				range = start_pos..start_pos unless success
@@ -348,7 +367,7 @@ module Grammy
 				unless ignored?
 					# TODO add ability to create custom node MyNode < Node
 					node = AST::Node.new(name, merge: helper?, stream: stream)
-					match_results.each{|res| node.add_child(res.ast_node) }
+					match_results.each{|res| node.add_child(res.ast_node) if res.ast_node }
 					node.match_range = range #start_pos..(cur_pos-1)
 				end
 

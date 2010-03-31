@@ -1,0 +1,13 @@
+
+
+Todo
+==================================================
+
+##   : BUGFIX: when skipper uses other rules => infinite recursion
+##   : BUGFIX: :a? >> :a? >> 'b' #=> sequence adds one to the match range even when :a? does not read anything
+##   : WORKAROUND: '\n' != "\n"
+
+
+Done
+==================================================
+

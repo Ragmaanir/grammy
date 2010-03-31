@@ -17,11 +17,15 @@ Todo
 ##   : track linenumbers for error report and compilation (semantic action?)
 ##   : give tokens a name: :ident.name
 ##   : Make predefined parsers available: use :string, :int, :float
-
 ##   : automatically check for valid identifiers: insert identifiers into table and check identifiers against that table
 ##   : automatically map matched input/strings to values by a symbol table
 #    : Optimize: stream[..] returns a copy that is only read and then garbage collected
 #    : Analyze grammar: potential ambiguities etc; style tips: +:asd? => *:asd
+##   : Turn debugging on and of?
+###  : Rename Rule etc to Parser
+##   : Error recognition/handling: disallow backtracking in some cases: '&' instead of '>>' ?
+##   : EOS parser
+##   : Skipper before and after token?
 
 Done
 ==================================================

@@ -329,6 +329,20 @@ describe Grammy do
 				g.parse('ba').should be_fail
 			end
 
+			it "should accept string sequence of optional rules" do
+				g = Grammy.define :simple do
+					rule a: 'a'
+					start char: :a? >> :a? >> 'b'
+				end
+
+				g.parse('aab').should be_success
+				g.parse('ab').should be_success
+				g.parse('b').should be_success
+				g.parse('').should be_success
+				g.parse('aa').should be_fail
+				g.parse('a').should be_fail
+			end
+
 			it "should accept string with one or more characters" do
 				g = Grammy.define :simple do
 					helper lower: 'a'..'z'
@@ -395,8 +409,6 @@ describe Grammy do
 				].each{ |input|
 					g.parse(input).should be_success
 				}
-
-				g.debug!
 
 				[
 					"",
@@ -605,8 +617,6 @@ describe Grammy do
 				token a: 'ab'
 				start start: :a >> :a >> :a
 			end
-
-			g.debug!
 			
 			match = g.parse("ab\nab\t  ab")
 			root = match.ast_node
@@ -626,8 +636,6 @@ describe Grammy do
 				token a: 'ab' | 'xy'
 				start start: :a >> :a >> :a
 			end
-
-			g.debug!
 
 			match = g.parse("ab\nxy\t  ab")
 			root = match.ast_node

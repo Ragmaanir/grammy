@@ -100,8 +100,12 @@ class Grammar
 
 	end
 
-	def debug!
-		@logger.level = DEBUG
+	def debug=(value)
+		if value
+			@logger.level = DEBUG
+		else
+			@logger.level = WARN
+		end
 	end
 
 	def validate
@@ -115,6 +119,7 @@ class Grammar
 		raise("no start rule supplied") unless @start_rule || options[:rule]
 		rule = @start_rule
 		rule = @rules[options[:rule]] || raise("rule '#{options[:rule]}' not found") if options[:rule]
+		logger.level = DEBUG if options[:debug]
 
 		logger.debug("##### Parsing(#{options[:rule]}): #{stream.inspect}")
 
@@ -128,6 +133,8 @@ class Grammar
 		end
 
 		logger.debug("##### success: #{match.success?}")
+
+		logger.level = WARN if options[:debug]
 
 		match
 	end
