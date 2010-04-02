@@ -115,6 +115,34 @@ class Grammar
 		
 	end
 
+	class ParseResult
+		attr_reader :start_pos, :end_pos, :tree
+		
+		def initialize(match,stream)
+			raise unless match.is_a? Grammy::MatchResult
+			@result = match.success?
+			@start_pos, @end_pos = match.start_pos, match.end_pos
+			@tree = match.ast_node
+			@stream = stream
+		end
+
+		def full_match?
+			@result and @end_pos == @stream.length
+		end
+
+		def partial_match?
+			@result and not full_match?
+		end
+
+		def no_match?
+			not full_match? and not partial_match?
+		end
+
+		def to_s
+			"full: #{full_match?}, part: #{partial_match?}, none: #{no_match?}, range: #{@start_pos}-#{@end_pos}"
+		end
+	end
+
 	def parse(stream,options={})
 		raise("no start rule supplied") unless @start_rule || options[:rule]
 		rule = @start_rule
@@ -136,7 +164,9 @@ class Grammar
 
 		logger.level = WARN if options[:debug]
 
-		match
+		result = ParseResult.new(match,stream)
+		puts result if options[:debug]
+		result
 	end
 	
 end

@@ -122,7 +122,6 @@ describe Grammy do
 			end
 
 			g.rules[:a_or_b].should be_a Grammar::Alternatives
-			#g.rules[:a_or_b].children.should == [:a,:b]
 			g.rules[:a_or_b].children.length.should == 2
 			g.rules[:a_or_b].children[0].should be_a Grammar::RuleWrapper
 			g.rules[:a_or_b].children[1].should be_a Grammar::RuleWrapper
@@ -258,7 +257,7 @@ describe Grammy do
 
 				node = g.rules[:lower].match("some",0).ast_node
 				node.should be_a AST::Node
-				node.match_range.should == (0..0)
+				node.range.should == [0,1]
 				node.name.should == :lower
 			end
 
@@ -270,7 +269,8 @@ describe Grammy do
 
 				node = g.rules[:string].match("some",0).ast_node
 				node.should be_a AST::Node
-				node.match_range.should == (0..3)
+				node.data.should == "some"
+				node.range.should == [0,4]
 				node.name.should == :string
 			end
 
@@ -284,7 +284,7 @@ describe Grammy do
 				
 				node.should be_a AST::Node
 				node.name.should == :string
-				node.match_range.should == (0..3)
+				node.range.should == [0,4]
 				node.to_s.should_not == "string{'some'}\n"
 				node.children.length.should == 4
 				node.children.first.to_s.should == "lower{'s'}\n"
@@ -298,6 +298,7 @@ describe Grammy do
 
 				node = g.rules[:string].match("some",0).ast_node
 				node.data.should == "some"
+				node.range.should == [0,4]
 				node.children.should be_empty
 				node.to_s.should == "string{'some'}\n"
 			end
@@ -312,7 +313,7 @@ describe Grammy do
 				end
 
 				['abcc','aaaa','cccc','acac','bbbb'].each { |str|
-					g.parse(str).should be_success
+					g.parse(str).should be_full_match
 				}
 			end
 
@@ -322,11 +323,11 @@ describe Grammy do
 					start char: :a?
 				end
 				
-				g.parse('').should be_success
-				g.parse('a').should be_success
-				g.parse('ac').should be_success
-				g.parse('b').should be_fail
-				g.parse('ba').should be_fail
+				g.parse('').should be_full_match
+				g.parse('a').should be_full_match
+				g.parse('ac').should be_partial_match
+				g.parse('b').should be_partial_match
+				g.parse('ba').should be_partial_match
 			end
 
 			it "should accept string sequence of optional rules" do
@@ -335,12 +336,12 @@ describe Grammy do
 					start char: :a? >> :a? >> 'b'
 				end
 
-				g.parse('aab').should be_success
-				g.parse('ab').should be_success
-				g.parse('b').should be_success
-				g.parse('').should be_success
-				g.parse('aa').should be_fail
-				g.parse('a').should be_fail
+				g.parse('aab').should be_full_match
+				g.parse('ab').should be_full_match
+				g.parse('b').should be_full_match
+				g.parse('').should be_no_match
+				g.parse('aa').should be_no_match
+				g.parse('a').should be_no_match
 			end
 
 			it "should accept string with one or more characters" do
@@ -349,7 +350,7 @@ describe Grammy do
 					start string: +:lower
 				end
 
-				g.parse("somelongerstring").should be_success
+				g.parse("somelongerstring").should be_full_match
 			end
 
 			it "should accept string with sequence" do
@@ -359,7 +360,7 @@ describe Grammy do
 				end
 
 				['abcc','aaaa','cccc','acac','bbbb'].each { |str|
-					g.parse(str).should be_success
+					g.parse(str).should be_full_match
 				}
 
 				# TODO fail
@@ -372,7 +373,7 @@ describe Grammy do
 				end
 				
 				['abcc','aaaa','cccc','acac','bbbb'].each { |str|
-					g.parse(str).should be_success
+					g.parse(str).should be_full_match
 				}
 
 				# TODO fail
@@ -389,7 +390,7 @@ describe Grammy do
 				end
 				
 				['a','abc_abc_abc','abc_123_abc','some_id0'].each { |ident|
-					g.parse(ident).should be_success
+					g.parse(ident).should be_full_match
 				}
 
 				# TODO fail
@@ -407,18 +408,23 @@ describe Grammy do
 					"12341234",
 					"1234"
 				].each{ |input|
-					g.parse(input).should be_success
+					g.parse(input).should be_full_match
+				}
+
+				[
+					"1234ab",
+					"1234bc",
+					"abc1234abcabc",
+					"abcxyzabcabc"
+				].each{ |input|
+					g.parse(input).should be_partial_match
 				}
 
 				[
 					"",
-					"1234ab",
-					"123abc",
-					"1234bc",
-					"abc1234abcabc",
-					"abcxyzabcabc"
+					"123abc"
 				].each { |input|
-					g.parse(input).should be_fail
+					g.parse(input).should be_no_match
 				}
 			end
 
@@ -427,19 +433,24 @@ describe Grammy do
 					start start: ('0' | '1') * (1..3)
 				end
 
-				(0..8).each { |i|
-					g.parse(i.to_s(2)).should be_success
+				(0..7).each { |i|
+					g.parse(i.to_s(2)).should be_full_match
+				}
+
+				[
+					"0000",
+					"012",
+					"1011",
+					"000\n"
+				].each{|input|
+					g.parse(input).should be_partial_match
 				}
 
 				[
 					"",
-					"0000",
-					"012",
-					"1011",
-					"2",
-					"000\n"
+					"2"
 				].each { |input|
-					g.parse(input).should be_fail
+					g.parse(input).should be_no_match
 				}
 			end
 
@@ -449,14 +460,14 @@ describe Grammy do
 					start start: :item >> (',' >> :item)*(0..10)
 				end
 
-				g.parse("").should be_fail
+				g.parse("").should be_no_match
 
 				[
 					"first",
 					"first,second",
 					"first,second,third"
 				].each { |input|
-					g.parse(input).should be_success
+					g.parse(input).should be_full_match
 				}
 			end
 
@@ -466,14 +477,14 @@ describe Grammy do
 					start start: list(:item)
 				end
 
-				g.parse("").should be_fail
+				g.parse("").should be_no_match
 
 				[
 					"first",
 					"first,second",
 					"first,second,third"
 				].each { |input|
-					g.parse(input).should be_success
+					g.parse(input).should be_full_match
 				}
 			end
 
@@ -485,8 +496,8 @@ describe Grammy do
 					start start: :a >> :a >> :a
 				end
 
-				g.parse("ab   ab   \n\tab").should be_success
-				g.parse("ab\nab\t  ab").should be_success
+				g.parse("ab   ab   \n\tab").should be_full_match
+				g.parse("ab\nab\t  ab").should be_full_match
 			end
 
 			it "should parse and only skip in rules" do
@@ -497,7 +508,7 @@ describe Grammy do
 					start start: +:a
 				end
 
-				g.parse("ab d\t\n ab d").should be_success
+				g.parse("ab d\t\n ab d").should be_full_match
 			end
 		end
 
@@ -510,7 +521,7 @@ describe Grammy do
 				start string: :lower * 4
 			end
 
-			tree = g.parse("some").ast_node
+			tree = g.parse("some").tree
 
 			tree.data.should == "some"
 			tree.to_s.should == "string{'some'}\n"
@@ -523,7 +534,7 @@ describe Grammy do
 				start string: +:lower
 			end
 
-			tree = g.parse("somelongerstring").ast_node
+			tree = g.parse("somelongerstring").tree
 
 			tree.data.should == "somelongerstring"
 			tree.to_s.should == "string{'somelongerstring'}\n"
@@ -536,10 +547,10 @@ describe Grammy do
 				start string: :lower >> :lower >> :lower >> :lower
 			end
 
-			tree = g.parse("some").ast_node
+			tree = g.parse("some").tree
 
 			tree.data.should == "some"
-			tree.match_range.should == (0..3)
+			tree.range.should == [0,4]
 			tree.children.should be_empty
 		end
 		
@@ -553,7 +564,7 @@ describe Grammy do
 				start ident: :ident_start >> (:ident_letter * (0..128))
 			end
 
-			tree = g.parse("some_id0").ast_node
+			tree = g.parse("some_id0").tree
 
 			tree.to_s.should == "ident{'some_id0'}\n"
 			tree.children.should be_empty
@@ -567,7 +578,7 @@ describe Grammy do
 				start start: :sent*(1..3)
 			end
 			
-			tree = g.parse("ab:ac.kk:ee.").ast_node
+			tree = g.parse("ab:ac.kk:ee.").tree
 			
 			tree.data.should == "ab:ac.kk:ee."
 
@@ -590,9 +601,9 @@ describe Grammy do
 				start string: :lower*3 >> :lower
 			end
 
-			tree = g.parse("some").ast_node
+			tree = g.parse("some").tree
 			tree.data.should == "some"
-			tree.match_range.should == (0..3)
+			tree.range.should == [0,4]
 		end
 
 		it "should parse an identifier" do
@@ -605,7 +616,7 @@ describe Grammy do
 				start ident: :ident_start >> (:ident_letter * (0..128))
 			end
 
-			tree = g.parse("some_id0").ast_node
+			tree = g.parse("some_id0").tree
 			tree.should be_a AST::Node
 			tree.data.should == "some_id0"
 		end
@@ -619,9 +630,9 @@ describe Grammy do
 			end
 			
 			match = g.parse("ab\nab\t  ab")
-			root = match.ast_node
+			root = match.tree
 
-			match.should be_success
+			match.should be_full_match
 			root.data.should == "ab\nab\t  ab"
 			root.name.should == :start
 			root.children.length.should == 3
@@ -638,9 +649,9 @@ describe Grammy do
 			end
 
 			match = g.parse("ab\nxy\t  ab")
-			root = match.ast_node
+			root = match.tree
 
-			match.should be_success
+			match.should be_full_match
 			root.data.should == "ab\nxy\t  ab"
 			root.name.should == :start
 			root.children.length.should == 3

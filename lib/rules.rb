@@ -149,7 +149,7 @@ module Grammy
 				match = grammar.skipper.match(stream,start)
 				
 				if match.success?
-					match.end_pos + 1
+					match.end_pos
 				else
 					match.start_pos
 				end
@@ -199,14 +199,12 @@ module Grammy
 		# RangeRule
 		#
 		class RangeRule < Rule
+			attr_reader :range
+			
 			def initialize(name,range,options={})
 				super(name,options)
 				raise "range must be range but was: '#{range}'" unless range.is_a? Range
 				@range = range
-			end
-
-			def range
-				@range
 			end
 
 			def children
@@ -216,18 +214,16 @@ module Grammy
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
 				success = false
-				#range = start_pos..start_pos
-
-				@range.find { |e|
-					#range = start_pos..(start_pos+(e.length-1))
-					#success = (e == stream[range])
+				end_pos = start_pos
+				
+				matched_element = @range.find { |e|
 					success = (e == stream[start_pos,e.length])
 				}
 
-				range = start_pos..start_pos unless success
+				end_pos = start_pos + matched_element.length if success
 
-				node = AST::Node.new(name, match_range: range, merge: helper?, stream: stream) if success and not ignored?
-				match = MatchResult.new(self,success,node,range)
+				node = AST::Node.new(name, range: [start_pos,end_pos], merge: helper?, stream: stream) if success and not ignored?
+				match = MatchResult.new(self,success,node,start_pos,end_pos)
 				debug_end(match)
 				match
 			end
@@ -253,12 +249,13 @@ module Grammy
 
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
-				range = start_pos..(start_pos+(@string.length-1))
-				success = (@string == stream[range])
-				range = start_pos..start_pos unless success
-				
-				node = AST::Node.new(name || :_str, match_range: range, merge: helper?, stream: stream) if success and not ignored?
-				match = MatchResult.new(self,success,node,range)
+				success = (@string == stream[start_pos,@string.length])
+
+				end_pos = start_pos
+				end_pos += @string.length if success
+
+				node = AST::Node.new(name || :_str, range: [start_pos,end_pos], merge: helper?, stream: stream) if success and not ignored?
+				match = MatchResult.new(self,success,node,start_pos,end_pos)
 
 				debug_end(match)
 				match
@@ -292,6 +289,7 @@ module Grammy
 
 			def grammar=(gr)
 				# dont set grammar for children because the wrapped rule might not be defined yet
+				# also the wrapped rule has a name (defined via rule-method), so it will get assigned a grammar anyway
 				@grammar = gr
 			end
 
@@ -306,15 +304,14 @@ module Grammy
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
 				
-				match_result = rule.match(stream,start_pos)
+				match = rule.match(stream,start_pos)
 
-				success = match_result.success? || optional?
+				success = match.success? || optional?
 
-				# FIXME maybe create an AST Node and store it in match result?
-				match = MatchResult.new(self, success, match_result.ast_node, match_result.match_range)
+				result = MatchResult.new(self, success, match.ast_node, match.start_pos, match.end_pos)
 				
-				debug_end(match)
-				match
+				debug_end(result)
+				result
 			end
 
 		end
@@ -345,36 +342,35 @@ module Grammy
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
 				
-				match_results = [] # will store the MatchResult of each rule of the sequence
+				results = [] # will store the MatchResult of each rule of the sequence
 				cur_pos = start_pos
 
 				# --find the first rule in the sequence that fails to match the input
 				# - add the results of all succeeding rules to the match_results array
 				failed = @sequence.find { |e|
 					cur_pos = skip(stream,cur_pos) if skipping?
-					match_result = e.match(stream,cur_pos)
-					if match_result.success?
-						match_results << match_result
+					match = e.match(stream,cur_pos)
+					
+					if match.success?
+						results << match
 
-						cur_pos = match_result.match_range.end + 1
+						cur_pos = match.end_pos
 					end
 
-					:exit if match_result.fail? # end loop
+					:exit if match.failure? # end loop
 				}
 
-				range = start_pos..(cur_pos-1)
+				end_pos = cur_pos
 
 				unless ignored?
-					# TODO add ability to create custom node MyNode < Node
-					node = AST::Node.new(name, merge: helper?, stream: stream)
-					match_results.each{|res| node.add_child(res.ast_node) if res.ast_node }
-					node.match_range = range #start_pos..(cur_pos-1)
+					node = AST::Node.new(name, merge: helper?, stream: stream, range: [start_pos,end_pos])
+					results.each{|res| node.add_child(res.ast_node) if res.ast_node }
 				end
 
-				match = MatchResult.new(self,!failed,node,range)
+				result = MatchResult.new(self,!failed,node,start_pos,end_pos)
 
-				debug_end(match)
-				match
+				debug_end(result)
+				result
 			end
 
 		end
@@ -382,8 +378,6 @@ module Grammy
 		# ALTERNATIVE
 		class Alternatives < Rule
 			def initialize(name,alts,options={})
-				#raise "alts.class must be in #{Rule::SourceTypes} but was #{alts.class}" unless Rule::SourceTypes.member? alts.class
-
 				@alternatives = alts.map{|r| Rule.to_rule(r) }
 				super(name,options)
 			end
@@ -394,84 +388,78 @@ module Grammy
 
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
-				match_result = nil
-				other_results = [] # stores all failed matches of other alternatives
+				match = nil
 
 				success = @alternatives.find { |e|
 					start_pos = skip(stream,start_pos) if skipping?
-					match_result = e.match(stream,start_pos)
-					other_results << match_result if match_result.fail?
-					match_result.success?
+					match = e.match(stream,start_pos)
+					match.success?
 				}
 
 				unless ignored?
-					# TODO add ability to create custom node MyNode < Node
 					node = AST::Node.new(name, merge: helper?, stream: stream)
-					node.add_child(match_result.ast_node) if match_result.ast_node
-					node.match_range = match_result.match_range
+					node.add_child(match.ast_node) if match.ast_node
+					node.start_pos = start_pos
+					node.end_pos = match.end_pos
 				end
 
-				match = MatchResult.new(self,!!success,node,match_result.match_range)
-				debug_end(match)
-				match
+				result = MatchResult.new(self,!!success,node,start_pos,match.end_pos)
+				debug_end(result)
+				result
 			end
 
 		end
 
 		# REPETITION
 		class Repetition < Rule
+			attr_accessor :repetitions
+
 			def initialize(name,rule,options={})
-				#raise "rule.class must be in [Symbol,Rule,Array,String]" unless [Symbol,Rule,Array,Range].member? alts.class
-				#raise "rule must be in #{Rule::SourceTypes} but was #{rule.class}" unless Rule::SourceTypes.include? rule.class
 				rule = Rule.to_rule(rule)
 				@rule = rule
+				@repetitions = options[:times] || raise("no repetition supplied")
 				super(name,options)
 			end
 
 			def children
 				[@rule]
 			end
-			
-			def repetitions
-				@options[:times]
-			end
 
 			def match(stream,start_pos)
 				success = false # set to true when repetition in specified range
 				failed = false # used for the loop
 				cur_pos = start_pos
-
 				
-				match_results = []
+				results = []
 
 				debug_start(stream,start_pos)
 
-				while not failed and match_results.length < repetitions.max
+				while not failed and results.length < repetitions.max
 					cur_pos = skip(stream,cur_pos) if skipping?
-					match_result = @rule.match(stream,cur_pos)
+					match = @rule.match(stream,cur_pos)
 
-					if match_result.success?
-						match_results << match_result
-
-						cur_pos = match_result.match_range.end + 1
+					if match.success?
+						results << match
+						
+						cur_pos = match.end_pos
 					else
-						# TODO store failed match?
 						failed = true
 					end
 				end
 
-				success = repetitions.include? match_results.length
+				success = repetitions.include? results.length
+				end_pos = success ? cur_pos : start_pos
 				
 				unless ignored?
-					# TODO add ability to create custom node MyNode < Node
 					node = AST::Node.new(name, merge: helper?, stream: stream)
-					match_results.each{|res| node.add_child(res.ast_node) }
-					node.match_range = start_pos..(cur_pos-1) # TODO compute when adding children?
+					results.each{|res| node.add_child(res.ast_node) }
+					node.start_pos = start_pos
+					node.end_pos = end_pos
 				end
 
-				match = MatchResult.new(self, !!success, node, start_pos..(cur_pos-1))
-				debug_end(match)
-				match
+				result = MatchResult.new(self, !!success, node, start_pos, end_pos)
+				debug_end(result)
+				result
 			end
 
 		end
