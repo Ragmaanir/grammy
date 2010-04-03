@@ -16,223 +16,74 @@ describe Grammy do
 			g.rules.should be_empty
 		end
 
-		it "should define grammar with sequence rule via string" do
+		it "should define grammar with StringRule" do
 			g = Grammy.define :simple do
 				rule token: 'test'
 			end
 
-			token_r = g.rules[:token]
-			token_r.should be_a Grammar::StringRule
-			token_r.children.should be_empty
-			token_r.string.should == "test"
-		end
-
-		it "should define grammar with sequence rule via concat" do
-			g = Grammy.define :simple do
-				rule token: 'test' >> 'other'
-			end
-
-			token_r = g.rules[:token]
-			token_r.should be_a Grammar::Sequence
-			token_r.children.length.should == 2
-			token_r.children.first.should be_a Grammar::StringRule
-			token_r.children.first.string.should == 'test'
-			token_r.children.last.should be_a Grammar::StringRule
-			token_r.children.last.string.should == 'other'
-		end
-
-		it "should define grammar with long sequence rule via concat" do
-			g = Grammy.define :simple do
-				helper a: 'a'
-				helper b: 'b'
-				rule token: :a >> :b >> :a
-			end
-
-			token_r = g.rules[:token]
-			token_r.should be_a Grammar::Sequence
-			
-			token_r.children.length.should == 3
-			token_r.children[0].should be_a Grammar::RuleWrapper
-			token_r.children[0].rule.string.should == 'a'
-			token_r.children[1].should be_a Grammar::RuleWrapper
-			token_r.children[1].rule.string.should == 'b'
-			token_r.children[2].should be_a Grammar::RuleWrapper
-			token_r.children[2].rule.string.should == 'a'
-		end
-
-		it "should define sequence grammar with skipper" do
-			g = Grammy.define :simple do
-				skipper whitespace: ' ' | "\n" | "\t"
-
-				token a: 'ab'
-				start start: :a >> :a >> :a
-			end
-
-			g.skipper.should be_a Grammar::Alternatives
-			g.skipper.should be_helper
-			g.skipper.should be_ignored
-			g.rules[:a].should_not be_skipping
-			g.rules[:start].should be_skipping
-		end
-
-		it "should define grammar with long sequence of same rule via concat" do
-			g = Grammy.define :simple do
-				helper a: 'ab'
-				rule token: :a >> :a >> :a
-			end
-
-			token_r = g.rules[:token]
-			token_r.should be_a Grammar::Sequence
-			
-			token_r.children.length.should == 3
-			token_r.children[0].should be_a Grammar::RuleWrapper
-			token_r.children[0].rule.string.should == 'ab'
-			token_r.children[1].should be_a Grammar::RuleWrapper
-			token_r.children[1].rule.string.should == 'ab'
-			token_r.children[2].should be_a Grammar::RuleWrapper
-			token_r.children[2].rule.string.should == 'ab'
-		end
-
-		it "should define grammar with alternative rule via range" do
-			g = Grammy.define :simple do
-				rule lower: 'a'..'z'
-			end
-
-			g.rules[:lower].should be_a Grammar::RangeRule
-			g.rules[:lower].range.should == ('a'..'z')
-		end
-
-		it "should define grammar with alternative rule via array" do
-			g = Grammy.define :simple do
-				rule a_or_g: ['a','g']
-			end
-
-			a_or_g = g.rules[:a_or_g]
-			a_or_g.should be_a Grammar::Alternatives
-			a_or_g.children.length.should == 2
-			a_or_g.children[0].should be_a Grammar::StringRule
-			a_or_g.children[1].should be_a Grammar::StringRule
-		end
-
-		it "should define grammar with alternative rule via symbols" do
-			g = Grammy.define :simple do
-				rule a: 'a'
-				rule b: 'b'
-				rule a_or_b: :a | :b
-			end
-
-			g.rules[:a_or_b].should be_a Grammar::Alternatives
-			g.rules[:a_or_b].children.length.should == 2
-			g.rules[:a_or_b].children[0].should be_a Grammar::RuleWrapper
-			g.rules[:a_or_b].children[1].should be_a Grammar::RuleWrapper
-		end
-
-		it "should define grammar with repetition via range" do
-			g = Grammy.define :simple do
-				rule a: 'a'
-				rule b: 'b'
-				rule as_or_bs: (:a | :b)*(3..77)
-			end
-
-			as_or_bs_r = g.rules[:as_or_bs]
-			as_or_bs_r.should be_a Grammar::Repetition
-			as_or_bs_r.repetitions.should == (3..77)
-			as_or_bs_r.children.length.should == 1
-			as_or_bs_r.children.first.should be_a Grammar::Alternatives
-		end
-
-		it "should define grammar with repetition via unary plus" do
-			g = Grammy.define :simple do
-				rule a: 'a'
-				rule b: 'b'
-				rule as_or_bs: +(:a | :b)
-			end
-
-			as_or_bs_r = g.rules[:as_or_bs]
-			as_or_bs_r.should be_a Grammar::Repetition
-			as_or_bs_r.repetitions.should == (1..Grammar::MAX_REPETITIONS)
-			as_or_bs_r.children.length.should == 1
-			as_or_bs_r.children.first.should be_a Grammar::Alternatives
+			token = g.rules[:token]
+			token.should be_a Grammar::StringRule
+			token.children.should be_empty
+			token.string.should == "test"
 		end
 
 		it "should define grammar with optional rule" do
 			g = Grammy.define :simple do
 				rule a: 'a'
 				rule b: 'b'
-				rule start: :a? >> :b
+				rule phrase: :a? >> :b
 			end
 
-			start_r = g.rules[:start]
-			start_r.should be_a Grammar::Sequence
-			start_r.children.length.should == 2
-			start_r.children.first.should be_a Grammar::RuleWrapper
-			start_r.children.first.should be_optional
+			phrase = g.rules[:phrase]
+			phrase.should be_a Grammar::Sequence
+			phrase.should have(2).children
+			phrase.children.first.should be_a Grammar::RuleWrapper
+			phrase.children.first.should be_optional
 		end
 
 		it "should define grammar with list-helper" do
 			g = Grammy.define :simple do
 				rule item: ('a'..'z')*(2..8)
-				start start: list(:item)
+				start phrase: list(:item)
 			end
 
-			start = g.rules[:start]
-			start.should be_a Grammar::Sequence
-			start.children.length.should == 2
-			start.children[0].should be_a Grammar::RuleWrapper
-			start.children[0].name.should == :item
-			start.children[1].should be_a Grammar::Repetition
-			start.children[1].repetitions.should == (0..1000)
-			start.children[1].children.length.should == 1
+			phrase = g.rules[:phrase]
+			phrase.should be_a Grammar::Sequence
+			phrase.should have(2).children
+			
+			phrase.children[0].should be_a Grammar::RuleWrapper
+			phrase.children[0].rule.should == g.rules[:item]
 
-			params = start.children[1].children[0]
+			phrase.children[1].should be_a Grammar::Repetition
+			phrase.children[1].repetitions.should == (0..1000)
+			phrase.children[1].should have(1).children
+
+			params = phrase.children[1].children[0]
 			params.should be_a Grammar::Sequence
-			params.children.length.should == 2
+			params.should have(2).children
 			params.children[0].should be_a Grammar::StringRule
 			params.children[1].should be_a Grammar::RuleWrapper
-			params.children[1].name.should == :item
+			params.children[1].rule.should == g.rules[:item]
 		end
 
 		it "should define grammar with helper rule" do
 			g = Grammy.define :simple do
 				helper a: 'a'
 				rule b: 'b'
-				rule start: :a >> :b
+				rule phrase: :a >> :b
 			end
 
-			start_r = g.rules[:start]
-			start_r.should be_a Grammar::Sequence
-			start_r.name.should == :start
-			start_r.children.length.should == 2
-			start_r.children[0].should be_a Grammar::RuleWrapper
-			start_r.children[0].name.should == :a
-			start_r.children[0].rule.should be_helper
-			start_r.children[1].should be_a Grammar::RuleWrapper
-			start_r.children[1].name.should == :b
-			start_r.children[1].rule.should_not be_helper
-		end
+			phrase = g.rules[:phrase]
+			
+			phrase.should be_a Grammar::Sequence
+			phrase.should have(2).children
+			phrase.children.each{|child| child.should be_a Grammar::RuleWrapper }
 
-		it "should define simple grammar" do
-			g = Grammy.define :simple do
-				rule digits: (0..9) * (0..16)
-				rule lower: 'a'..'z'
-				rule upper: 'A'..'Z'
-				rule letter: :lower | :upper
-				rule ident_start: :letter | '_';
-				rule ident_letter: :ident_start | ('0'..'9')
-				rule ident: :ident_start >> (:ident_letter * (0..128))
-				rule method_suffix: ['!','?']
-				rule method_id: :ident >> :method_suffix?
-			end
-
-			g.rules[:digits].should be_a Grammar::Repetition
-			g.rules[:lower].should be_a Grammar::RangeRule
-			g.rules[:ident].should be_a Grammar::Sequence
-			g.rules[:method_id].should be_a Grammar::Sequence
-			g.rules[:method_suffix].should be_a Grammar::Alternatives
-
-			g.rules.each_pair do |name,rule|
-				rule.name.should == name
-			end
+			g.rules[:a].should be_helper
+			g.rules[:b].should_not be_helper
+			
+			phrase.children[0].rule.should == g.rules[:a]
+			phrase.children[1].rule.should == g.rules[:b]
 		end
 
 		it "should raise when duplicate rules" do
@@ -277,23 +128,23 @@ describe Grammy do
 			it "should match string without helper" do
 				g = Grammy.define :simple do
 					rule lower: 'a'..'z'
-					rule string: :lower * (1..16)
+					rule string: +:lower
 				end
-
+				
 				node = g.rules[:string].match("some",0).ast_node
 				
 				node.should be_a AST::Node
 				node.name.should == :string
 				node.range.should == [0,4]
 				node.to_s.should_not == "string{'some'}\n"
-				node.children.length.should == 4
+				node.should have(4).children
 				node.children.first.to_s.should == "lower{'s'}\n"
 			end
 
 			it "should merge helper nodes" do
 				g = Grammy.define :simple do
 					helper lower: 'a'..'z'
-					rule string: :lower * (1..16)
+					rule string: +:lower
 				end
 
 				node = g.rules[:string].match("some",0).ast_node
@@ -306,158 +157,11 @@ describe Grammy do
 		end
 
 		describe "ACCEPTANCE" do
-			it "should accept string with constant repetition" do
-				g = Grammy.define :simple do
-					helper lower: 'a'..'z'
-					start string: :lower * 4
-				end
-
-				['abcc','aaaa','cccc','acac','bbbb'].each { |str|
-					g.parse(str).should be_full_match
-				}
-			end
-
-			it "should accept string with optional rule" do
-				g = Grammy.define :simple do
-					rule a: 'a'
-					start char: :a?
-				end
-				
-				g.parse('').should be_full_match
-				g.parse('a').should be_full_match
-				g.parse('ac').should be_partial_match
-				g.parse('b').should be_partial_match
-				g.parse('ba').should be_partial_match
-			end
-
-			it "should accept string sequence of optional rules" do
-				g = Grammy.define :simple do
-					rule a: 'a'
-					start char: :a? >> :a? >> 'b'
-				end
-
-				g.parse('aab').should be_full_match
-				g.parse('ab').should be_full_match
-				g.parse('b').should be_full_match
-				g.parse('').should be_no_match
-				g.parse('aa').should be_no_match
-				g.parse('a').should be_no_match
-			end
-
-			it "should accept string with one or more characters" do
-				g = Grammy.define :simple do
-					helper lower: 'a'..'z'
-					start string: +:lower
-				end
-
-				g.parse("somelongerstring").should be_full_match
-			end
-
-			it "should accept string with sequence" do
-				g = Grammy.define :simple do
-					helper lower: 'a'..'z'
-					start string: :lower >> :lower >> :lower >> :lower
-				end
-
-				['abcc','aaaa','cccc','acac','bbbb'].each { |str|
-					g.parse(str).should be_full_match
-				}
-
-				# TODO fail
-			end
-
-			it "should accept string with constant repetition in sequence" do
-				g = Grammy.define :simple do
-					helper lower: 'a'..'c'
-					start string: :lower*3 >> :lower
-				end
-				
-				['abcc','aaaa','cccc','acac','bbbb'].each { |str|
-					g.parse(str).should be_full_match
-				}
-
-				# TODO fail
-			end
-
-			it "should accept an identifier" do
-				g = Grammy.define :simple do
-					helper lower: 'a'..'z'
-					helper upper: 'A'..'Z'
-					helper letter: :lower | :upper
-					helper ident_start: :letter | '_';
-					helper ident_letter: :ident_start | ('0'..'9')
-					start ident: :ident_start >> (:ident_letter * (0..128))
-				end
-				
-				['a','abc_abc_abc','abc_123_abc','some_id0'].each { |ident|
-					g.parse(ident).should be_full_match
-				}
-
-				# TODO fail
-			end
-
-			it "should parse repetition" do
-				g = Grammy.define :simple do
-					rule string: 'abc' | '1234'
-					start start: :string * (1..3)
-				end
-
-				[
-					"1234abc",
-					"abcabcabc",
-					"12341234",
-					"1234"
-				].each{ |input|
-					g.parse(input).should be_full_match
-				}
-
-				[
-					"1234ab",
-					"1234bc",
-					"abc1234abcabc",
-					"abcxyzabcabc"
-				].each{ |input|
-					g.parse(input).should be_partial_match
-				}
-
-				[
-					"",
-					"123abc"
-				].each { |input|
-					g.parse(input).should be_no_match
-				}
-			end
-
-			it "should parse all valid bit strings" do
-				g = Grammy.define :simple do
-					start start: ('0' | '1') * (1..3)
-				end
-
-				(0..7).each { |i|
-					g.parse(i.to_s(2)).should be_full_match
-				}
-
-				[
-					"0000",
-					"012",
-					"1011",
-					"000\n"
-				].each{|input|
-					g.parse(input).should be_partial_match
-				}
-
-				[
-					"",
-					"2"
-				].each { |input|
-					g.parse(input).should be_no_match
-				}
-			end
 
 			it "should parse comma seperated list" do
-				g = Grammy.define :simple do
+				g = Grammy.define :list do
 					rule item: ('a'..'z')*(2..8)
-					start start: :item >> (',' >> :item)*(0..10)
+					start start: :item >> ~(',' >> :item)
 				end
 
 				g.parse("").should be_no_match
@@ -472,7 +176,7 @@ describe Grammy do
 			end
 
 			it "should parse comma seperated list with list-helper" do
-				g = Grammy.define :simple do
+				g = Grammy.define :list do
 					rule item: ('a'..'z')*(2..8)
 					start start: list(:item)
 				end
@@ -488,18 +192,6 @@ describe Grammy do
 				}
 			end
 
-			it "should parse sequence with skipper" do
-				g = Grammy.define :simple do
-					skipper whitespace: +(' ' | "\n" | "\t")
-
-					token a: 'ab'
-					start start: :a >> :a >> :a
-				end
-
-				g.parse("ab   ab   \n\tab").should be_full_match
-				g.parse("ab\nab\t  ab").should be_full_match
-			end
-
 			it "should parse and only skip in rules" do
 				g = Grammy.define :simple do
 					skipper whitespace: +(' ' | "\n" | "\t")
@@ -512,154 +204,23 @@ describe Grammy do
 			end
 		end
 
-	end
+		describe "Error detection" do
 
-	describe "AST" do
-		it "should parse string with constant repetition" do
-			g = Grammy.define :simple do
-				helper lower: 'a'..'z'
-				start string: :lower * 4
+			it "should raise in sequence" do
+				g = Grammy.define :simple do
+					helper lower: 'a'..'z'
+					start string: :lower >> :lower / :lower >> :lower
+				end
+
+				g.rules[:string].should have(2).children
+				g.rules[:string].should_not be_backtracking
+
+				expect{ g.parse("aa1a") }.to raise_exception(Grammy::ParseError)
+				expect{ g.parse("aaa3") }.to raise_exception(Grammy::ParseError)
 			end
 
-			tree = g.parse("some").tree
-
-			tree.data.should == "some"
-			tree.to_s.should == "string{'some'}\n"
-			tree.children.should be_empty
 		end
 
-		it "should parse string with one or more characters" do
-			g = Grammy.define :simple do
-				helper lower: 'a'..'z'
-				start string: +:lower
-			end
-
-			tree = g.parse("somelongerstring").tree
-
-			tree.data.should == "somelongerstring"
-			tree.to_s.should == "string{'somelongerstring'}\n"
-			tree.children.should be_empty
-		end
-
-		it "should parse string with sequence" do
-			g = Grammy.define :simple do
-				helper lower: 'a'..'z'
-				start string: :lower >> :lower >> :lower >> :lower
-			end
-
-			tree = g.parse("some").tree
-
-			tree.data.should == "some"
-			tree.range.should == [0,4]
-			tree.children.should be_empty
-		end
-		
-		it "should remove helper nodes" do
-			g = Grammy.define :simple do
-				helper lower: 'a'..'z'
-				helper upper: 'A'..'Z'
-				helper letter: :lower | :upper
-				helper ident_start: :letter | '_';
-				helper ident_letter: :ident_start | ('0'..'9')
-				start ident: :ident_start >> (:ident_letter * (0..128))
-			end
-
-			tree = g.parse("some_id0").tree
-
-			tree.to_s.should == "ident{'some_id0'}\n"
-			tree.children.should be_empty
-		end
-
-		it "should only remove helper nodes" do
-			g = Grammy.define :simple do
-				rule id: ('a'..'z')*(1..10)
-				helper part: :id >> ':' >> :id
-				rule sent: :part >> '.'
-				start start: :sent*(1..3)
-			end
-			
-			tree = g.parse("ab:ac.kk:ee.").tree
-			
-			tree.data.should == "ab:ac.kk:ee."
-
-			tree.children.length.should == 2
-			sent1 = tree.children[0]
-			sent2 = tree.children[1]
-
-			sent1.name.should == :sent
-			sent2.name.should == :sent
-			sent1.data.should == "ab:ac."
-			sent2.data.should == "kk:ee."
-			
-			sent1.children.map{|c| {c.name => c.data}}.should == [{id: 'ab'}, {id: 'ac'}]
-			sent2.children.map{|c| {c.name => c.data}}.should == [{id: 'kk'}, {id: 'ee'}]
-		end
-
-		it "should parse string with constant repetition in sequence" do
-			g = Grammy.define :simple do
-				helper lower: 'a'..'z'
-				start string: :lower*3 >> :lower
-			end
-
-			tree = g.parse("some").tree
-			tree.data.should == "some"
-			tree.range.should == [0,4]
-		end
-
-		it "should parse an identifier" do
-			g = Grammy.define :simple do
-				helper lower: 'a'..'z'
-				helper upper: 'A'..'Z'
-				helper letter: :lower | :upper
-				helper ident_start: :letter | '_';
-				helper ident_letter: :ident_start | ('0'..'9')
-				start ident: :ident_start >> (:ident_letter * (0..128))
-			end
-
-			tree = g.parse("some_id0").tree
-			tree.should be_a AST::Node
-			tree.data.should == "some_id0"
-		end
-
-		it "should parse sequence grammar with skipper and not create nodes for skipper" do
-			g = Grammy.define :simple do
-				skipper whitespace: +(' ' | "\n" | "\t")
-
-				token a: 'ab'
-				start start: :a >> :a >> :a
-			end
-			
-			match = g.parse("ab\nab\t  ab")
-			root = match.tree
-
-			match.should be_full_match
-			root.data.should == "ab\nab\t  ab"
-			root.name.should == :start
-			root.children.length.should == 3
-			root.children[0].name.should == :a
-			root.children[0].data.should == 'ab'
-		end
-
-		it "should parse sequence grammar with skipper and create nodes for tokens" do
-			g = Grammy.define :simple do
-				skipper whitespace: +(' ' | "\n" | "\t")
-
-				token a: 'ab' | 'xy'
-				start start: :a >> :a >> :a
-			end
-
-			match = g.parse("ab\nxy\t  ab")
-			root = match.tree
-
-			match.should be_full_match
-			root.data.should == "ab\nxy\t  ab"
-			root.name.should == :start
-			root.children.length.should == 3
-			root.children[0].name.should == :a
-			root.children[0].data.should == 'ab'
-			root.children[1].name.should == :a
-			root.children[1].data.should == 'xy'
-		end
 	end
 
 end

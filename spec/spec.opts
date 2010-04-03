@@ -1,0 +1,5 @@
+--colour
+--format nested
+--format html:./temp/spec_results.html
+--loadby mtime
+--reverse

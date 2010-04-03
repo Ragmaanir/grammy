@@ -26,6 +26,8 @@ Todo
 ##   : Error recognition/handling: disallow backtracking in some cases: '&' instead of '>>' ?
 ##   : EOS parser
 ##   : Skipper before and after token?
+##   : Rule.to_s #=> (a >> b) | c
+#    : nice to have: 1..9 instead of '1'..'9'
 
 Done
 ==================================================

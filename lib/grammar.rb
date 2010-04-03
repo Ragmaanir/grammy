@@ -98,14 +98,14 @@ class Grammar
 			result
 		end
 
+		def eos
+			EOSRule.new
+		end
+
 	end
 
 	def debug=(value)
-		if value
-			@logger.level = DEBUG
-		else
-			@logger.level = WARN
-		end
+		@logger.level = value ? DEBUG : WARN
 	end
 
 	def validate

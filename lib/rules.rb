@@ -2,6 +2,15 @@ require 'ast'
 require 'match_result'
 
 module Grammy
+	
+	class ParseError < StandardError
+		attr_reader :rule, :start_pos
+
+		def initialize(rule,start_pos)
+			@rule, @start_pos = rule, start_pos
+		end
+	end
+
 	module Rules
 
 		MAX_REPETITIONS = 10_000
@@ -48,10 +57,10 @@ module Grammy
 				}
 			end
 
-			def &(other)
-				left = Rule.to_rule(self)
-				left.backtracking = false
-				Sequence.new(nil,[left,other], helper: true)
+			def /(right)
+				#right = Rule.to_rule(right)
+				#right.backtracking = false
+				Sequence.new(nil,[self,right], helper: true, backtracking: false)
 			end
 
 			def >>(other)
@@ -71,6 +80,10 @@ module Grammy
 
 			def +@
 				Repetition.new(nil,self,times: 1..MAX_REPETITIONS, helper: true)
+			end
+
+			def ~@
+				Repetition.new(nil,self,times: 0..MAX_REPETITIONS, helper: true)
 			end
 		end
 
@@ -111,7 +124,7 @@ module Grammy
 			end
 
 			def backtracking?
-				@options[:backtracking]
+				@options[:backtracking]!=false
 			end
 
 			def skipping=(value)
@@ -145,8 +158,8 @@ module Grammy
 				}
 			end
 
-			def skip(stream,start)
-				match = grammar.skipper.match(stream,start)
+			def skip(stream,start_pos)
+				match = grammar.skipper.match(stream,start_pos)
 				
 				if match.success?
 					match.end_pos
@@ -180,7 +193,8 @@ module Grammy
 					when "RuleWrapper" then "Wrp"
 					when "StringRule" then "Str"
 					when "Repetition" then "Rep"
-					else raise
+					when "EOSRule" then "EOS"
+					else raise("invalid rule type")
 				end
 
 				Log4r::NDC.push(name || ':'+str)
@@ -196,19 +210,24 @@ module Grammy
 		end
 
 		#
+		# LeafRule
+		# - just a helper class
+		class LeafRule < Rule
+			def children
+				[]
+			end
+		end
+
+		#
 		# RangeRule
 		#
-		class RangeRule < Rule
+		class RangeRule < LeafRule
 			attr_reader :range
 			
 			def initialize(name,range,options={})
 				super(name,options)
 				raise "range must be range but was: '#{range}'" unless range.is_a? Range
 				@range = range
-			end
-
-			def children
-				[]
 			end
 
 			def match(stream,start_pos)
@@ -220,6 +239,8 @@ module Grammy
 					success = (e == stream[start_pos,e.length])
 				}
 
+				raise ParseError.new(self,start_pos) if not success and not backtracking?
+
 				end_pos = start_pos + matched_element.length if success
 
 				node = AST::Node.new(name, range: [start_pos,end_pos], merge: helper?, stream: stream) if success and not ignored?
@@ -227,29 +248,58 @@ module Grammy
 				debug_end(match)
 				match
 			end
+
+			def to_s
+				"(#{@range.min}..#{@range.max})"
+			end
+		end
+
+		#
+		# EOSRule
+		# - matches the end of the stream
+		# - when skipping: skips characters until end of stream reached
+		class EOSRule < LeafRule
+			def initialize(options={})
+				super(nil,options)
+			end
+
+			def match(stream,start_pos)
+				debug_start(stream,start_pos)
+
+				end_pos = start_pos
+				end_pos = skip(stream,start_pos) if skipping?
+				success = stream[end_pos] == nil
+
+				raise ParseError.new(self,start_pos) if not success and not backtracking?
+
+				match = MatchResult.new(self,success,nil,start_pos,end_pos)
+
+				debug_end(match)
+				match
+			end
+
+			def to_s
+				"EOS"
+			end
 		end
 
 		#
 		# StringRule
 		# 
-		class StringRule < Rule
+		class StringRule < LeafRule
+			attr_reader :string
+
 			def initialize(string,options={})
 				super(nil,options)
 				raise unless string.is_a? String
 				@string = string
 			end
 
-			def string
-				@string
-			end
-
-			def children
-				[]
-			end
-
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
 				success = (@string == stream[start_pos,@string.length])
+
+				raise ParseError.new(self,start_pos) if not success and not backtracking?
 
 				end_pos = start_pos
 				end_pos += @string.length if success
@@ -259,6 +309,10 @@ module Grammy
 
 				debug_end(match)
 				match
+			end
+
+			def to_s
+				"'#{@string}'"
 			end
 		end
 
@@ -307,11 +361,16 @@ module Grammy
 				match = rule.match(stream,start_pos)
 
 				success = match.success? || optional?
+				raise ParseError.new(self,start_pos) if not success and not backtracking?
 
 				result = MatchResult.new(self, success, match.ast_node, match.start_pos, match.end_pos)
 				
 				debug_end(result)
 				result
+			end
+
+			def to_s
+				"#{name}#{optional? ? '?' : ''}"
 			end
 
 		end
@@ -322,8 +381,9 @@ module Grammy
 		class Sequence < Rule
 			def initialize(name,seq,options={})
 				#raise "seq.class must be in #{Rule::SourceTypes} but was #{seq.class}" unless Rule::SourceTypes.member? seq.class
-				seq = seq.map{|elem| 
-					if elem.is_a? Sequence and elem.helper?
+				super(name,options)
+				seq = seq.map{|elem|
+					if elem.is_a? Sequence and elem.helper? and backtracking?
 						elem.children
 					else
 						elem
@@ -332,7 +392,6 @@ module Grammy
 				
 				seq = seq.map{|elem| Rule.to_rule(elem) }
 				@sequence = seq
-				super(name,options)
 			end
 
 			def children
@@ -360,7 +419,9 @@ module Grammy
 					:exit if match.failure? # end loop
 				}
 
-				end_pos = cur_pos
+				raise ParseError.new(self,start_pos) if failed and not backtracking?
+
+				end_pos = failed ? start_pos : cur_pos
 
 				unless ignored?
 					node = AST::Node.new(name, merge: helper?, stream: stream, range: [start_pos,end_pos])
@@ -373,12 +434,24 @@ module Grammy
 				result
 			end
 
+			def to_s
+				"(#{@sequence.join(" >> ")})"
+			end
+
 		end
 
 		# ALTERNATIVE
 		class Alternatives < Rule
 			def initialize(name,alts,options={})
-				@alternatives = alts.map{|r| Rule.to_rule(r) }
+				@alternatives = []
+				alts.each { |alt|
+					alt = Rule.to_rule(alt)
+					if alt.is_a? Alternatives
+						@alternatives.concat(alt.children)
+					else
+						@alternatives << alt
+					end
+				}
 				super(name,options)
 			end
 
@@ -396,6 +469,8 @@ module Grammy
 					match.success?
 				}
 
+				raise ParseError.new(self,start_pos) if not success and not backtracking?
+
 				unless ignored?
 					node = AST::Node.new(name, merge: helper?, stream: stream)
 					node.add_child(match.ast_node) if match.ast_node
@@ -408,11 +483,16 @@ module Grammy
 				result
 			end
 
+			def to_s
+				"(#{@alternatives.join(" | ")})"
+			end
+
 		end
 
 		# REPETITION
 		class Repetition < Rule
 			attr_accessor :repetitions
+			attr_reader :rule
 
 			def initialize(name,rule,options={})
 				rule = Rule.to_rule(rule)
@@ -460,6 +540,18 @@ module Grammy
 				result = MatchResult.new(self, !!success, node, start_pos, end_pos)
 				debug_end(result)
 				result
+			end
+
+			def to_s
+				if repetitions == 0..MAX_REPETITIONS
+					"~#{@rule}"
+				elsif repetitions == 1..MAX_REPETITIONS
+					"+#{@rule}"
+				elsif repetitions.min == repetitions.max
+					"#{@rule}*#{repetitions.min}"
+				else
+					"#{@rule}*#{repetitions}"
+				end
 			end
 
 		end
