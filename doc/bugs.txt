@@ -5,6 +5,7 @@ Todo
 
 ##   : BUGFIX: when skipper uses other rules => infinite recursion
 ##   : WORKAROUND: '\n' != "\n"
+##   : BUGFIX: token x: +:digit # with ws-skipper matches eg '33  ' and stores '33  ' in ast-node
 
 
 Done

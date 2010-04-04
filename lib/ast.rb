@@ -50,7 +50,19 @@ class AST
 			end
 		end
 
-		def to_s(indents=0)
+#		def eql?(other)
+#			if other.is_a? Node
+#				other.start_pos == start_pos and other.end_pos == end_pos and other.name == name
+#			else
+#				false
+#			end
+#		end
+
+		def to_s
+			"#{@name}#{object_id}"
+		end
+
+		def to_string_tree(indents=0)
 			indent = "  "*indents
 
 			result = ""
@@ -74,6 +86,79 @@ class AST
 			
 			result
 		end
+
+		def to_image(name,format=:png)
+			require 'graphviz'
+			
+			graph = GraphViz.new(name)
+			graph.node[shape: :box, fontsize: 8]
+
+			queue = []
+
+			begin
+
+				root = graph.add_node(self.object_id.to_s, label: self.name)
+				queue << [self,root]
+
+				while queue.any?
+					cur_node,graph_node = queue.pop
+
+					if cur_node.leaf_node?
+						new_node = graph.add_node("'#{cur_node.data}'")
+						new_node[shape: :circle, style: :filled, fillcolor: "#6699ff", fontsize: 8]
+						graph.add_edge(graph_node,new_node)
+					else
+						cur_node.children.each { |child|
+							new_node = graph.add_node(child.object_id.to_s, label: child.name)
+							graph.add_edge(graph_node,new_node)
+							queue << [child,new_node]
+						}
+					end
+				end
+
+				graph.save(format => "temp/#{name}.#{format}")
+
+			rescue Exception => e
+				puts e.backtrace
+				raise
+			end
+		end
+
+#		def to_image(name,format='png')
+#			require 'rgl/adjacency'
+#			require 'rgl/dot'
+#			graph = RGL::DirectedAdjacencyGraph.new
+#
+#			begin
+#
+#				queue = []
+#				queue << self
+#				graph.add_vertex(self)
+#
+#				while queue.any?
+#					cur_node = queue.pop
+#
+#					if cur_node.leaf_node?
+#						graph.add_vertex(cur_node.data)
+#						graph.add_edge(cur_node,cur_node.data)
+#					else
+#						cur_node.children.each { |child|
+#							graph.add_vertex(child)
+#							graph.add_edge(cur_node,child)
+#						}
+#
+#						queue.concat cur_node.children
+#					end
+#				end
+#
+#				graph.write_to_graphic_file(format,name)
+#
+#			rescue Exception => e
+#				puts e.backtrace
+#				raise
+#			end
+#		end
+
 	end
 
 end
