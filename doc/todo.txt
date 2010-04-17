@@ -3,6 +3,7 @@ Todo
 ==================================================
 
 ###  : Error report and hooks
+###  : list(:rule) ast transformation: :rule >> ~(',' >> :rule) #=> array of ast nodes
 ##   : transformations: rule x: +:digit, map: ->(node){ Integer(node.data) }
 ###  : AST Node naming & reordering: use '^', '<=>' ?
 ##   : support Regexp as rules
@@ -21,16 +22,20 @@ Todo
 #    : Optimize: stream[..] returns a copy that is only read and then garbage collected
 #    : Analyze grammar: potential ambiguities etc; style tips: +:asd? => *:asd
 ###  : Rename Rule etc to Parser
-##   : Error recognition/handling: disallow backtracking in some cases: '&' instead of '>>' ?
-##   : Skipper before and after token?
+##   : Error recognition/handling: disallow backtracking in some cases: '&' or '/' instead of '>>' ?
+##   : Skipper before and after token? only in sequence?
 ##   : Rule.to_s #=> (a >> b) | c
 #    : nice to have: 1..9 instead of '1'..'9'
 #    : optional rules: :a >> [(',' >> :a)+] # change [x,y] => alternative?, [x] => optional
 #### : pass options to rule: rule a: 'a', helper: true, skipping: false
-###  : Use RGL to output the AST and Grammar: grammar.to_image('img','png')
+###  : Use ruby-graphviz to output the Grammar: grammar.to_image('grammar')
+###  : Match anything: :a >> ~any >> :b
+###  : fragment = token + helper
+##   : Skipper class which wraps a rule
 
 Done
 ==================================================
+###  : Use ruby-graphviz to output the AST: ast.to_image('ast')
 #### : zero or more x: ~x
 ##   : Turn debugging on and off? grammar.parse("...", debug: true)
 ##   : EOS parser

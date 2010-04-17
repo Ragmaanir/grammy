@@ -84,8 +84,8 @@ describe Grammy::Rules::Sequence do
 			token_r = g.rules[:token]
 			token_r.should be_a Grammar::Sequence
 
-			puts token_r
-			p token_r.children
+			#puts token_r
+			#p token_r.children
 			#token_r.children[2].should_not be_backtracking
 			token_r.should have(2).children
 			token_r.should_not be_backtracking
@@ -176,6 +176,60 @@ describe Grammy::Rules::Sequence do
 
 			expect{ g.parse("aa1a") }.to raise_exception(Grammy::ParseError)
 			expect{ g.parse("aaa3") }.to raise_exception(Grammy::ParseError)
+		end
+	end
+
+	describe "should" do
+		it "return sequence of rules as string with to_s" do
+			g = Grammy.define :simple do
+				token a: 'ab'
+				token b: 'asd'
+				start start: :a >> :b >> :a
+			end
+
+			g.rules[:start].to_s.should == ":a >> :b >> :a"
+		end
+
+		it "return sequence with optional rules as string with to_s" do
+			g = Grammy.define :simple do
+				token a: 'ab'
+				token b: 'asd'
+				start start: :a >> :b? >> :a?
+			end
+
+			g.rules[:start].to_s.should == ":a >> :b? >> :a?"
+		end
+
+		it "return sequence of strings as string with to_s" do
+			g = Grammy.define :simple do
+				start start: 'a' >> 'y' >> 'z'
+			end
+
+			g.rules[:start].to_s.should == "'a' >> 'y' >> 'z'"
+		end
+		
+		it "return sequence with an alternative as string with to_s" do
+			g = Grammy.define :simple do
+				start start: 'a' >> ('b' | 'cde')
+			end
+
+			g.rules[:start].to_s.should == "'a' >> ('b' | 'cde')"
+		end
+
+		it "return sequence with repetition as string with to_s" do
+			g = Grammy.define :simple do
+				start start: 'a' >> ~'xyz' >> 'c'
+			end
+
+			g.rules[:start].to_s.should == "'a' >> ~'xyz' >> 'c'"
+		end
+
+		it "return sequence with repetition of subrule as string with to_s" do
+			g = Grammy.define :simple do
+				start start: 'a' >> ~('xy' >> 'z') >> 'c'
+			end
+
+			g.rules[:start].to_s.should == "'a' >> ~('xy' >> 'z') >> 'c'"
 		end
 	end
 

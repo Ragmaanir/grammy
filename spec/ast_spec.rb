@@ -13,7 +13,7 @@ describe "AST" do
 		tree = g.parse("some").tree
 
 		tree.data.should == "some"
-		tree.to_s.should == "string{'some'}\n"
+		tree.to_tree_string.should == "string{'some'}\n"
 		tree.children.should be_empty
 	end
 
@@ -26,7 +26,7 @@ describe "AST" do
 		tree = g.parse("somelongerstring").tree
 
 		tree.data.should == "somelongerstring"
-		tree.to_s.should == "string{'somelongerstring'}\n"
+		tree.to_tree_string.should == "string{'somelongerstring'}\n"
 		tree.children.should be_empty
 	end
 
@@ -55,7 +55,7 @@ describe "AST" do
 
 		tree = g.parse("some_id0").tree
 
-		tree.to_s.should == "ident{'some_id0'}\n"
+		tree.to_tree_string.should == "ident{'some_id0'}\n"
 		tree.children.should be_empty
 	end
 

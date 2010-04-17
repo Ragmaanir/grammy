@@ -136,9 +136,9 @@ describe Grammy do
 				node.should be_a AST::Node
 				node.name.should == :string
 				node.range.should == [0,4]
-				node.to_s.should_not == "string{'some'}\n"
+				node.to_tree_string.should_not == "string{'some'}\n"
 				node.should have(4).children
-				node.children.first.to_s.should == "lower{'s'}\n"
+				node.children.first.to_tree_string.should == "lower{'s'}\n"
 			end
 
 			it "should merge helper nodes" do
@@ -151,7 +151,7 @@ describe Grammy do
 				node.data.should == "some"
 				node.range.should == [0,4]
 				node.children.should be_empty
-				node.to_s.should == "string{'some'}\n"
+				node.to_tree_string.should == "string{'some'}\n"
 			end
 		
 		end

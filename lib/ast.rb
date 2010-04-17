@@ -13,7 +13,6 @@ class AST
 		end
 
 		def range
-			#@range || raise("no match range")
 			[@start_pos,@end_pos]
 		end
 
@@ -43,26 +42,14 @@ class AST
 			raise "node is nil" if node.nil?
 			raise "node is no Node: '#{node}'" unless node.is_a? Node
 			if node.merge?
-				#@children = @children + node.children
 				@children.concat(node.children)
 			else
 				@children << node
 			end
 		end
 
-#		def eql?(other)
-#			if other.is_a? Node
-#				other.start_pos == start_pos and other.end_pos == end_pos and other.name == name
-#			else
-#				false
-#			end
-#		end
-
-		def to_s
-			"#{@name}#{object_id}"
-		end
-
-		def to_string_tree(indents=0)
+		# 
+		def to_tree_string(indents=0)
 			indent = "  "*indents
 
 			result = ""
@@ -74,7 +61,7 @@ class AST
 				result << "{ \n"
 				result << @children.map{ |c|
 						if c.is_a? Node
-							c.to_s(indents+1)
+							c.to_tree_string(indents+1)
 						else
 							c.to_s
 						end
@@ -87,6 +74,7 @@ class AST
 			result
 		end
 
+		#
 		def to_image(name,format=:png)
 			require 'graphviz'
 			
@@ -95,69 +83,28 @@ class AST
 
 			queue = []
 
-			begin
+			root = graph.add_node(self.object_id.to_s, label: self.name)
+			queue << [self,root]
 
-				root = graph.add_node(self.object_id.to_s, label: self.name)
-				queue << [self,root]
+			while queue.any?
+				cur_node,graph_node = queue.pop
 
-				while queue.any?
-					cur_node,graph_node = queue.pop
-
-					if cur_node.leaf_node?
-						new_node = graph.add_node("'#{cur_node.data}'")
-						new_node[shape: :circle, style: :filled, fillcolor: "#6699ff", fontsize: 8]
+				if cur_node.leaf_node?
+					new_node = graph.add_node(cur_node.data.object_id.to_s, label: "'#{cur_node.data}'")
+					new_node[shape: :circle, style: :filled, fillcolor: "#6699ff", fontsize: 8]
+					graph.add_edge(graph_node,new_node)
+				else
+					cur_node.children.each { |child|
+						new_node = graph.add_node(child.object_id.to_s, label: child.name)
 						graph.add_edge(graph_node,new_node)
-					else
-						cur_node.children.each { |child|
-							new_node = graph.add_node(child.object_id.to_s, label: child.name)
-							graph.add_edge(graph_node,new_node)
-							queue << [child,new_node]
-						}
-					end
+						queue << [child,new_node]
+					}
 				end
-
-				graph.save(format => "temp/#{name}.#{format}")
-
-			rescue Exception => e
-				puts e.backtrace
-				raise
 			end
-		end
 
-#		def to_image(name,format='png')
-#			require 'rgl/adjacency'
-#			require 'rgl/dot'
-#			graph = RGL::DirectedAdjacencyGraph.new
-#
-#			begin
-#
-#				queue = []
-#				queue << self
-#				graph.add_vertex(self)
-#
-#				while queue.any?
-#					cur_node = queue.pop
-#
-#					if cur_node.leaf_node?
-#						graph.add_vertex(cur_node.data)
-#						graph.add_edge(cur_node,cur_node.data)
-#					else
-#						cur_node.children.each { |child|
-#							graph.add_vertex(child)
-#							graph.add_edge(cur_node,child)
-#						}
-#
-#						queue.concat cur_node.children
-#					end
-#				end
-#
-#				graph.write_to_graphic_file(format,name)
-#
-#			rescue Exception => e
-#				puts e.backtrace
-#				raise
-#			end
-#		end
+			graph.save(format => "temp/#{name}.#{format}")
+
+		end
 
 	end
 

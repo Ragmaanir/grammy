@@ -185,6 +185,14 @@ module Grammy
 				rule_type + '{' + children.join(',') + '}'
 			end
 
+			def to_image(name)
+				require 'graphviz'
+				graph = GraphViz.new(name)
+				graph.node[shape: :box, fontsize: 8]
+
+				to_image_impl(graph)
+			end
+
 			def debug_start(stream,start)
 				str = case rule_type
 					when "Sequence" then "Seq"
@@ -370,7 +378,7 @@ module Grammy
 			end
 
 			def to_s
-				"#{name}#{optional? ? '?' : ''}"
+				":#{name}#{optional? ? '?' : ''}"
 			end
 
 		end
@@ -435,7 +443,35 @@ module Grammy
 			end
 
 			def to_s
-				"(#{@sequence.join(" >> ")})"
+				@sequence.map{|item|
+					if item.is_a? Alternatives
+						"(#{item})"
+					else
+						item.to_s
+					end
+				}.join(" >> ")
+			end
+
+			protected
+			def to_image_impl(graph)
+				raise "not implemented" # TODO implement
+				#
+				# Problem: a >> +(b | c)
+				# How to display that?
+				#
+				#    +-----<-----+
+				#    |  +--b--+  |
+				# a--+--|     |--+-->
+				#       +--c--+
+				#
+				# 
+				raise "no graph supplied" unless graph
+				last_node = nil
+				@sequence.each{|item|
+					new_node = graph.add_node(cur_node.data.object_id.to_s, label: "'#{cur_node.data}'")
+					new_node[shape: :circle, style: :filled, fillcolor: "#6699ff", fontsize: 8]
+					graph.add_edge(last_node,new_node)
+				}
 			end
 
 		end
@@ -484,7 +520,7 @@ module Grammy
 			end
 
 			def to_s
-				"(#{@alternatives.join(" | ")})"
+				"#{@alternatives.join(" | ")}"
 			end
 
 		end
@@ -543,14 +579,17 @@ module Grammy
 			end
 
 			def to_s
-				if repetitions == 0..MAX_REPETITIONS
-					"~#{@rule}"
-				elsif repetitions == 1..MAX_REPETITIONS
-					"+#{@rule}"
+				rule_str = @rule.to_s
+				rule_str = "(#{rule_str})" if [Sequence,Alternatives,Repetition].include? @rule.class
+
+				if repetitions == (0..MAX_REPETITIONS)
+					"~#{rule_str}"
+				elsif repetitions == (1..MAX_REPETITIONS)
+					"+#{rule_str}"
 				elsif repetitions.min == repetitions.max
-					"#{@rule}*#{repetitions.min}"
+					"#{rule_str}*#{repetitions.min}"
 				else
-					"#{@rule}*#{repetitions}"
+					"#{rule_str}*#{repetitions}"
 				end
 			end
 

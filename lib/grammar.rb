@@ -101,6 +101,7 @@ class Grammar
 		def list?(*params)
 			rule = list(*params)
 			# TODO implement: RuleWrapper.new(rule,optional: true)
+			RuleWrapper.new(rule,optional: true)
 		end
 
 		def eos

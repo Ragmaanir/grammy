@@ -136,8 +136,6 @@ describe "CommonGrammars" do
 		g.parse("5 + 23 * val").should be_full_match
 		g.parse("5 * 3 / val").should be_full_match
 
-		g.parse("5 + 23 * val").tree.to_image('expression')
-
 		g.parse("5 * 3 / val 3").should be_partial_match
 		g.parse("5 3").should be_partial_match
 
