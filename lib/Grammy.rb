@@ -2,11 +2,8 @@ require 'grammar'
 
 module Grammy
 
-	Version = '0.0.4'
-
-	def self.define(name,&block)
-		raise unless name.is_a? Symbol
-		Grammar.new(name,&block)
+	def self.define(*args,&block)
+		Grammar.new(*args,&block)
 	end
 	
 end

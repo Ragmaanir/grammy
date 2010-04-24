@@ -5,13 +5,15 @@ require 'log4r'
 class Grammar
 	include Log4r
 
-	attr_accessor :name
+	attr_accessor :name, :line_number
 	attr_reader :rules, :logger
 
-	def initialize(name,options={},&block)
-		@name = name
-		@rules = {}
+	def initialize(*args,&block)
+		@name = args.shift if [Symbol,String].include?(args.first.class)
+		options = args.first || {}
 		@logger = options[:logger]
+
+		@rules = {}
 		
 		unless @logger
 			@logger = Log4r::Logger.new 'grammy'
@@ -115,10 +117,9 @@ class Grammar
 	end
 
 	def validate
-		raise "not implemented" # TODO implement
+		raise NotImplementedError # TODO implement
 		# check for always fail		: ~:a >> :a
 		# check for left recursion: x: :x | :y
-		
 	end
 
 	class ParseResult
@@ -157,6 +158,7 @@ class Grammar
 
 		logger.debug("##### Parsing(#{options[:rule]}): #{stream.inspect}")
 
+		@line_number = 1
 		begin
 			match = rule.match(stream,0)
 		rescue Exception => e
@@ -165,7 +167,9 @@ class Grammar
 			puts e.backtrace
 			raise e
 		end
+		@line_number = nil
 
+		Log4r::NDC.clear
 		logger.debug("##### success: #{match.success?}")
 
 		logger.level = WARN if options[:debug]

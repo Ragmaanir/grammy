@@ -7,7 +7,7 @@ describe Grammy::Rules::Alternatives do
 
 	describe "should define grammar" do
 		it "with alternatives via '|' operator" do
-			g = Grammy.define :alt do
+			g = Grammy.define do
 				rule lower: 'a' | 'b' | 'c'
 			end
 
@@ -17,7 +17,7 @@ describe Grammy::Rules::Alternatives do
 		end
 
 		it "with alternative rule via array" do
-			g = Grammy.define :alt do
+			g = Grammy.define do
 				rule a_or_g: ['a','g']
 			end
 
@@ -29,7 +29,7 @@ describe Grammy::Rules::Alternatives do
 		end
 
 		it "with alternative rule via symbols" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				rule a: 'a'
 				rule b: 'b'
 				rule a_or_b: :a | :b
@@ -44,7 +44,7 @@ describe Grammy::Rules::Alternatives do
 
 	describe "should accept" do
 		it "with alternatives via '|' operator" do
-			g = Grammy.define :alt do
+			g = Grammy.define do
 				start lower: 'a' | 'b' | 'c'
 			end
 
@@ -61,7 +61,7 @@ describe Grammy::Rules::Alternatives do
 		end
 
 		it "with alternative rule via array" do
-			g = Grammy.define :alt do
+			g = Grammy.define do
 				start a_or_g: ['a','g']
 			end
 

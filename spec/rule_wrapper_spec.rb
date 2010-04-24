@@ -7,7 +7,7 @@ describe Grammy::Rules::RuleWrapper do
 
 	describe "should define" do
 		it "non-optional rule" do
-			g = Grammy.define :optional do
+			g = Grammy.define do
 				rule a: 'a'
 				start char: :a
 			end
@@ -26,7 +26,7 @@ describe Grammy::Rules::RuleWrapper do
 		end
 
 		it "optional rule" do
-			g = Grammy.define :optional do
+			g = Grammy.define do
 				rule a: 'a'
 				start char: :a?
 			end
@@ -47,7 +47,7 @@ describe Grammy::Rules::RuleWrapper do
 
 	describe "should accept" do
 		it "string with optional rule" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				rule a: 'a'
 				start char: :a?
 			end
@@ -60,7 +60,7 @@ describe Grammy::Rules::RuleWrapper do
 		end
 
 		it "sequence of optional rules" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				rule a: 'a'
 				start char: :a? >> :a? >> 'b'
 			end
@@ -76,7 +76,7 @@ describe Grammy::Rules::RuleWrapper do
 
 	describe "should" do
 		it "not generate ast-node when optional rule skipped" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				rule a: 'a'
 				start char: '<' >> :a? >> '>'
 			end
@@ -85,7 +85,7 @@ describe Grammy::Rules::RuleWrapper do
 		end
 
 		it "generate ast-node when optional rule not skipped" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				rule a: 'a'
 				start char: '<' >> :a? >> '>'
 			end

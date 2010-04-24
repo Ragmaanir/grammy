@@ -7,7 +7,7 @@ describe Grammy::Rules::Repetition do
 
 	describe "should define grammar" do
 		it "with repetition via range" do
-			g = Grammy.define :range do
+			g = Grammy.define do
 				rule a: 'a'
 				start as: :a*(3..77)
 			end
@@ -20,7 +20,7 @@ describe Grammy::Rules::Repetition do
 		end
 
 		it "with constant repetition" do
-			g = Grammy.define :const_repetition do
+			g = Grammy.define do
 				rule a: 'a'
 				start const: :a*3
 			end
@@ -33,7 +33,7 @@ describe Grammy::Rules::Repetition do
 		end
 
 		it "with one or more repetitions for unary +" do
-			g = Grammy.define :one_or_more do
+			g = Grammy.define do
 				start plus: +'a'
 			end
 
@@ -45,7 +45,7 @@ describe Grammy::Rules::Repetition do
 		end
 
 		it "with zero or more repetitions for unary ~" do
-			g = Grammy.define :zero_or_more do
+			g = Grammy.define do
 				start any: ~'a'
 			end
 
@@ -60,7 +60,7 @@ describe Grammy::Rules::Repetition do
 
 	describe "should accept" do
 		it "string with constant repetition" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				helper lower: 'a'..'z'
 				start string: :lower * 4
 			end
@@ -79,7 +79,7 @@ describe Grammy::Rules::Repetition do
 		end
 
 		it "zero or more characters" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				helper lower: 'a'..'z'
 				start string: ~:lower
 			end
@@ -94,7 +94,7 @@ describe Grammy::Rules::Repetition do
 		end
 
 		it "one or more characters" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				helper lower: 'a'..'z'
 				start string: +:lower
 			end
@@ -111,7 +111,7 @@ describe Grammy::Rules::Repetition do
 		end
 
 		it "repetition defined via range" do
-			g = Grammy.define :simple do
+			g = Grammy.define do
 				rule string: 'abc' | '1234'
 				start start: :string * (1..3)
 			end

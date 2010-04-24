@@ -7,7 +7,7 @@ describe Grammy::Rules::RangeRule do
 
 	describe "sould define" do
 		it "range from a to z" do
-			g = Grammy.define :letters do
+			g = Grammy.define do
 				start lower: 'a'..'z'
 			end
 
@@ -18,7 +18,7 @@ describe Grammy::Rules::RangeRule do
 		end
 
 		it "range from 1 to 9" do
-			g = Grammy.define :digits do
+			g = Grammy.define do
 				start digit: '1'..'9'
 			end
 
@@ -31,7 +31,7 @@ describe Grammy::Rules::RangeRule do
 
 	describe "should accept" do
 		it "letters" do
-			g = Grammy.define :letters do
+			g = Grammy.define do
 				start lower: 'a'..'z'
 			end
 
@@ -42,7 +42,7 @@ describe Grammy::Rules::RangeRule do
 		end
 
 		it "digits" do
-			g = Grammy.define :digits do
+			g = Grammy.define do
 				start lower: '0'..'9'
 			end
 

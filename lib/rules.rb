@@ -4,10 +4,65 @@ require 'match_result'
 module Grammy
 	
 	class ParseError < StandardError
-		attr_reader :rule, :start_pos
+		attr_reader :rule, :start_pos, :line_number, :expected
 
-		def initialize(rule,start_pos)
-			@rule, @start_pos = rule, start_pos
+		def initialize(rule,start_pos,lineno=nil,expected=nil)
+			@rule, @start_pos, @line_number, @expected = rule, start_pos, lineno, expected
+		end
+
+		def message
+			"Syntax error: expected #{expected} in line #{line_number} at #{start_pos}: "
+		end
+	end
+
+	class SyntaxError
+		attr_reader :source, :line, :line_number, :column, :sequence, :failed_rule
+
+		def initialize(*args)
+			@source, @line, @line_number, @column, @sequence, @failed_rule = *args
+		end
+
+		def message
+			<<-EOERR
+			Syntax error
+			in '#{source}' in line #{line_number} at #{column}
+			#{line.inspect}
+			Expected: #{failed_rule}
+			In Rule: #{sequence}
+			EOERR
+		end
+	end
+
+	class ParseContext
+		attr_reader :grammar
+		attr_reader :stream, :errors, :source
+		attr_accessor :line_number, :position, :line_start
+
+		def initialize(grammar,source,stream)
+			@grammar, @source, @stream, @errors = grammar, source, stream, []
+			@position = @line_start = 0
+			@line_number = 1
+		end
+
+		def position=(new_pos)
+			raise unless new_pos > @position
+			newlines = @stream[@position..new_pos].count("\n")
+			@line_number += newlines
+			@line_start = @stream[@position..new_pos].rindex("\n") if newlines > 0
+			@position = new_pos
+		end
+
+		def line
+			rest = @stream[@line_start..-1]
+			rest[/([^\n]*)\n?/,1] # all characters to next newline or eos
+		end
+
+		def column
+			@position - @line_star
+		end
+
+		def add_error(sequence,failed_rule)
+			@errors << SyntaxError.new(source,line,line_number,column,sequence,failed_rule)
 		end
 	end
 
@@ -57,10 +112,10 @@ module Grammy
 				}
 			end
 
-			def /(right)
-				#right = Rule.to_rule(right)
-				#right.backtracking = false
-				Sequence.new(nil,[self,right], helper: true, backtracking: false)
+			def &(right)
+				right = Rule.to_rule(right)
+				right.backtracking = false
+				Sequence.new(nil,[self,right], helper: true)
 			end
 
 			def >>(other)
@@ -97,9 +152,14 @@ module Grammy
 
 			attr_accessor :name, :options
 			attr_reader :grammar
+			attr_writer :helper, :backtracking, :skipping, :ignored
 
 			def initialize(name,options={})
 				@name = name
+				@helper = options.delete(:helper)
+				@backtracking = options.delete(:backtracking)
+				@skipping = options.delete(:skipping)
+				@ignored = options.delete(:ignored)
 				@options = options
 			end
 
@@ -108,46 +168,27 @@ module Grammy
 				self.class.name.split('::').last
 			end
 
-			def helper=(value)
-				@options[:helper] = value
-			end
-
 			# true iff this rule is a helper rule. a rule is automatically a helper rule when it has no name.
 			# a helper rule generates no AST::Node
 			def helper?
-				(@options[:helper] || !name)
-			end
-			
-			def backtracking=(value)
-				raise "invalid backtracking value: '#{value}'" unless [true,false].include? value
-				@options[:backtracking] = value
+				(@helper || !name)
 			end
 
 			def backtracking?
-				@options[:backtracking]!=false
-			end
-
-			def skipping=(value)
-				raise "invalid skipping value: '#{value}'" unless [true,false].include? value
-				@options[:skipping] = value
+				@backtracking != false
 			end
 
 			def skipping?
-				grammar.skipper and @options[:skipping]
-			end
-
-			def ignored=value
-				raise unless [true,false].member? value
-				@options[:ignored] = value
+				grammar.skipper and @skipping
 			end
 
 			# true when the matched string should not be part of the generated AST (like ',' or '(')
 			def ignored?
-				@options[:ignored]
+				@ignored #@options[:ignored]
 			end
 
 			def children
-				raise "not implemented in #{self.class}"
+				raise NotImplementedError
 			end
 
 			def grammar=(gr)
@@ -186,6 +227,7 @@ module Grammy
 			end
 
 			def to_image(name)
+				raise NotImplementedError
 				require 'graphviz'
 				graph = GraphViz.new(name)
 				graph.node[shape: :box, fontsize: 8]
@@ -194,19 +236,15 @@ module Grammy
 			end
 
 			def debug_start(stream,start)
-				str = case rule_type
-					when "Sequence" then "Seq"
-					when "Alternatives" then "Alt"
-					when "RangeRule" then "Ran"
+				abbr = case rule_type
 					when "RuleWrapper" then "Wrp"
-					when "StringRule" then "Str"
-					when "Repetition" then "Rep"
-					when "EOSRule" then "EOS"
-					else raise("invalid rule type")
+					else rule_type[0,3]
 				end
 
-				Log4r::NDC.push(name || ':'+str)
-				grammar.logger.debug("#{str}.match(#{stream[start..-1].inspect},#{start})")
+				scope_name = name || ':'+abbr
+				scope_name = '|>' if self.class == RuleWrapper
+				Log4r::NDC.push(scope_name)
+				grammar.logger.debug("#{abbr}.match(#{stream[start,15].inspect},#{start})")
 			end
 
 			def debug_end(match)
@@ -223,6 +261,10 @@ module Grammy
 		class LeafRule < Rule
 			def children
 				[]
+			end
+
+			def update_line_number(str)
+				grammar.line_number += str.count("\n")
 			end
 		end
 
@@ -247,9 +289,10 @@ module Grammy
 					success = (e == stream[start_pos,e.length])
 				}
 
-				raise ParseError.new(self,start_pos) if not success and not backtracking?
-
-				end_pos = start_pos + matched_element.length if success
+				if success
+					end_pos = start_pos + matched_element.length
+					update_line_number(stream[start_pos,matched_element.length])
+				end
 
 				node = AST::Node.new(name, range: [start_pos,end_pos], merge: helper?, stream: stream) if success and not ignored?
 				match = MatchResult.new(self,success,node,start_pos,end_pos)
@@ -278,8 +321,6 @@ module Grammy
 				end_pos = skip(stream,start_pos) if skipping?
 				success = stream[end_pos] == nil
 
-				raise ParseError.new(self,start_pos) if not success and not backtracking?
-
 				match = MatchResult.new(self,success,nil,start_pos,end_pos)
 
 				debug_end(match)
@@ -307,10 +348,9 @@ module Grammy
 				debug_start(stream,start_pos)
 				success = (@string == stream[start_pos,@string.length])
 
-				raise ParseError.new(self,start_pos) if not success and not backtracking?
-
 				end_pos = start_pos
 				end_pos += @string.length if success
+				update_line_number(stream[start_pos,@string.length]) if success
 
 				node = AST::Node.new(name || :_str, range: [start_pos,end_pos], merge: helper?, stream: stream) if success and not ignored?
 				match = MatchResult.new(self,success,node,start_pos,end_pos)
@@ -341,7 +381,6 @@ module Grammy
 			end
 
 			def name
-				#rule.name
 				@symbol
 			end
 
@@ -369,7 +408,6 @@ module Grammy
 				match = rule.match(stream,start_pos)
 
 				success = match.success? || optional?
-				raise ParseError.new(self,start_pos) if not success and not backtracking?
 
 				result = MatchResult.new(self, success, match.ast_node, match.start_pos, match.end_pos)
 				
@@ -387,23 +425,24 @@ module Grammy
 		# SEQUENCE
 		#
 		class Sequence < Rule
+			attr_reader :children
+			
 			def initialize(name,seq,options={})
-				#raise "seq.class must be in #{Rule::SourceTypes} but was #{seq.class}" unless Rule::SourceTypes.member? seq.class
 				super(name,options)
+				seq = seq.map{|elem| Rule.to_rule(elem) }
+
 				seq = seq.map{|elem|
-					if elem.is_a? Sequence and elem.helper? and backtracking?
+					if elem.is_a? Sequence and elem.helper?
+						if not elem.backtracking?
+							elem.children.first.backtracking = false
+						end
 						elem.children
 					else
 						elem
 					end
 				}.flatten
 				
-				seq = seq.map{|elem| Rule.to_rule(elem) }
-				@sequence = seq
-			end
-
-			def children
-				@sequence
+				@children = seq
 			end
 
 			def match(stream,start_pos)
@@ -411,23 +450,25 @@ module Grammy
 				
 				results = [] # will store the MatchResult of each rule of the sequence
 				cur_pos = start_pos
+				do_backtracking = true
 
 				# --find the first rule in the sequence that fails to match the input
 				# - add the results of all succeeding rules to the match_results array
-				failed = @sequence.find { |e|
+				failed = @children.find { |e|
 					cur_pos = skip(stream,cur_pos) if skipping?
 					match = e.match(stream,cur_pos)
+					do_backtracking = (do_backtracking and e.backtracking?)
 					
 					if match.success?
 						results << match
 
 						cur_pos = match.end_pos
+					elsif not do_backtracking
+						raise ParseError.new(self,cur_pos,grammar.line_number,e)
 					end
 
 					:exit if match.failure? # end loop
 				}
-
-				raise ParseError.new(self,start_pos) if failed and not backtracking?
 
 				end_pos = failed ? start_pos : cur_pos
 
@@ -443,7 +484,7 @@ module Grammy
 			end
 
 			def to_s
-				@sequence.map{|item|
+				@children.map{|item|
 					if item.is_a? Alternatives
 						"(#{item})"
 					else
@@ -454,7 +495,7 @@ module Grammy
 
 			protected
 			def to_image_impl(graph)
-				raise "not implemented" # TODO implement
+				raise NotImplementedError # TODO implement
 				#
 				# Problem: a >> +(b | c)
 				# How to display that?
@@ -467,7 +508,7 @@ module Grammy
 				# 
 				raise "no graph supplied" unless graph
 				last_node = nil
-				@sequence.each{|item|
+				@children.each{|item|
 					new_node = graph.add_node(cur_node.data.object_id.to_s, label: "'#{cur_node.data}'")
 					new_node[shape: :circle, style: :filled, fillcolor: "#6699ff", fontsize: 8]
 					graph.add_edge(last_node,new_node)
@@ -478,34 +519,30 @@ module Grammy
 
 		# ALTERNATIVE
 		class Alternatives < Rule
+			attr_reader :children
+			
 			def initialize(name,alts,options={})
-				@alternatives = []
+				@children = []
 				alts.each { |alt|
 					alt = Rule.to_rule(alt)
 					if alt.is_a? Alternatives
-						@alternatives.concat(alt.children)
+						@children.concat(alt.children)
 					else
-						@alternatives << alt
+						@children << alt
 					end
 				}
 				super(name,options)
-			end
-
-			def children
-				@alternatives
 			end
 
 			def match(stream,start_pos)
 				debug_start(stream,start_pos)
 				match = nil
 
-				success = @alternatives.find { |e|
+				success = @children.find { |e|
 					start_pos = skip(stream,start_pos) if skipping?
 					match = e.match(stream,start_pos)
 					match.success?
 				}
-
-				raise ParseError.new(self,start_pos) if not success and not backtracking?
 
 				unless ignored?
 					node = AST::Node.new(name, merge: helper?, stream: stream)
@@ -520,7 +557,7 @@ module Grammy
 			end
 
 			def to_s
-				"#{@alternatives.join(" | ")}"
+				"#{@children.join(" | ")}"
 			end
 
 		end

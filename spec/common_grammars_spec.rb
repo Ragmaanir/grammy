@@ -89,6 +89,7 @@ describe "CommonGrammars" do
 	it "should define float with exponent"
 
 	it "should define quoted string" do
+		pending "implement '-' operator"
 		g = Grammy.define :quoted_string do
 			skipper ws: +' '
 
@@ -98,8 +99,6 @@ describe "CommonGrammars" do
 			token string: '"' >> +(:letter | :DIGIT) >> '"'
 			start quoted_string: :string
 		end
-
-		fail "implement '-' operator"
 
 		g.parse(' " some text here" ').should be_full_match
 		g.parse(' " some symbols here$&57/-., " ').should be_full_match

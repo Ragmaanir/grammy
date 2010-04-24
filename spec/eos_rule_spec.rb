@@ -6,7 +6,7 @@ require 'Grammy'
 describe Grammy::Rules::EOSRule do
 
 	it "should only match end of stream" do
-		g = Grammy.define :eos do
+		g = Grammy.define do
 			start phrase: 'first' >> 'last' >> eos
 		end
 
@@ -23,7 +23,7 @@ describe Grammy::Rules::EOSRule do
 	describe "should accept" do
 
 		it "end of stream" do
-			g = Grammy.define :eos do
+			g = Grammy.define do
 				start phrase: 'first' >> 'last' >> eos
 			end
 
@@ -33,7 +33,7 @@ describe Grammy::Rules::EOSRule do
 		end
 
 		it "end of stream with skipper" do
-			g = Grammy.define :eos do
+			g = Grammy.define do
 				skipper ws: +' '
 				start phrase: 'first' >> 'last' >> eos
 			end

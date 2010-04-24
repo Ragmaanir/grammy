@@ -192,7 +192,7 @@ AST Generation
 --------------
 When parsing a string an abstract syntax tree is generated for the string:
 
-![image of example AST](img/example_ast.png)
+![image of example AST](http://ragmaanir.mypresident.de/images/example_ast.png)
 
 The AST can be accessed like this:
 

@@ -5,7 +5,7 @@ require 'Grammy'
 
 describe "AST" do
 	it "should parse string with constant repetition" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			helper lower: 'a'..'z'
 			start string: :lower * 4
 		end
@@ -18,7 +18,7 @@ describe "AST" do
 	end
 
 	it "should parse string with one or more characters" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			helper lower: 'a'..'z'
 			start string: +:lower
 		end
@@ -31,7 +31,7 @@ describe "AST" do
 	end
 
 	it "should parse string with sequence" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			helper lower: 'a'..'z'
 			start string: :lower >> :lower >> :lower >> :lower
 		end
@@ -44,7 +44,7 @@ describe "AST" do
 	end
 
 	it "should remove helper nodes" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			helper lower: 'a'..'z'
 			helper upper: 'A'..'Z'
 			helper letter: :lower | :upper
@@ -60,7 +60,7 @@ describe "AST" do
 	end
 
 	it "should only remove helper nodes" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			rule id: ('a'..'z')*(1..10)
 			helper part: :id >> ':' >> :id
 			rule sent: :part >> '.'
@@ -85,7 +85,7 @@ describe "AST" do
 	end
 
 	it "should parse string with constant repetition in sequence" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			helper lower: 'a'..'z'
 			start string: :lower*3 >> :lower
 		end
@@ -96,7 +96,7 @@ describe "AST" do
 	end
 
 	it "should parse an identifier" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			helper lower: 'a'..'z'
 			helper upper: 'A'..'Z'
 			helper letter: :lower | :upper
@@ -111,7 +111,7 @@ describe "AST" do
 	end
 
 	it "should parse sequence grammar with skipper and not create nodes for skipper" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			skipper whitespace: +(' ' | "\n" | "\t")
 
 			token a: 'ab'
@@ -130,7 +130,7 @@ describe "AST" do
 	end
 
 	it "should parse sequence grammar with skipper and create nodes for tokens" do
-		g = Grammy.define :simple do
+		g = Grammy.define do
 			skipper whitespace: +(' ' | "\n" | "\t")
 
 			token a: 'ab' | 'xy'

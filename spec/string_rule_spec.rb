@@ -7,7 +7,7 @@ describe Grammy::Rules::StringRule do
 
 	describe "should define grammar" do
 		it "with string rule" do
-			g = Grammy.define :string do
+			g = Grammy.define do
 				start str: 'long_string'
 			end
 
@@ -18,7 +18,7 @@ describe Grammy::Rules::StringRule do
 
 	describe "should match exactly" do
 		it "a string" do
-			g = Grammy.define :string do
+			g = Grammy.define do
 				start str: 'long_string'
 			end
 
@@ -32,7 +32,7 @@ describe Grammy::Rules::StringRule do
 
 	describe "should accept" do
 		it "a string" do
-			g = Grammy.define :string do
+			g = Grammy.define do
 				start str: 'long_string'
 			end
 
