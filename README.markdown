@@ -214,12 +214,59 @@ Many substrings that are matched by the grammar are automatically *not* included
 
 	This creates only *one* node for the rule 'a'. Not one for each character.
 
-Debuggin
---------
+Error Detection
+---------------
+
+The operator '&' which behaves like the '>>' operator disables backtracking. This means:
+
+	rule err_seq: 'aaa' & 'bbb'
+
+Is nearly equivalent to:
+
+	rule seq: 'aaa' >> 'bbb'
+
+With the exception that when err_seq matches 'aaa' in the input, backtracking is disabled,
+so the next string in the input MUST be 'bbb', otherwise a SyntaxError is added
+to the errors array of the ParseResult returned by Grammar#parse.
+
+SyntaxErrors look like this when written to console:
+
+For:
+	g.parse!("aaabb").should have(1).errors
+
+the output is:
+
+	Syntax error
+	| in source 'unknown'
+	| in line 1 at column 4
+	| "aaabb"
+	| Expected: 'bbb'
+	| In Rule: err_seq -> 'aaa' 'bbb'
+
+And for:
+
+	g.parse!("aaaBBB").should have(1).errors
+
+the message is:
+
+	Syntax error
+	| in source 'unknown'
+	| in line 1 at column 4
+	| "aaaBBB"
+	| Expected: 'bbb'
+	| In Rule: err_seq -> 'aaa' 'bbb'
+
+
+Debugging
+---------
 
 You can see what the parser is doing when you turn debugging on:
 
 	g.parse("some input", debug: true)
+
+Or shorter:
+
+	g.parse!("some input")
 
 
 Testing

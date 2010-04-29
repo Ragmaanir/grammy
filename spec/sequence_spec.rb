@@ -238,7 +238,7 @@ describe Grammy::Rules::Sequence do
 
 			g.parse("aax").should have(1).errors
 			g.parse("cc").should have(1).errors
-			g.parse!("aaxb").should have(1).errors
+			g.parse("aaxb").should have(1).errors
 			g.parse("ccd").should have(1).errors
 		end
 
