@@ -9,7 +9,7 @@ module Grammy
 		class RuleWrapper < Rule
 			def initialize(sym,options={})
 				raise("sym has to be a symbol but was: '#{sym}'") unless sym.is_a? Symbol
-				@optional = false
+				@optional = options[:optional] || false
 				if sym[-1]=='?'
 					@optional = true
 					sym = sym[0..-2].to_sym

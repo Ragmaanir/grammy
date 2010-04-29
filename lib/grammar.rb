@@ -98,6 +98,7 @@ class Grammar
 		end
 
 		def list(rule,sep=',',options={})
+			raise unless rule.is_a? Symbol
 			range = options[:range] || 0..1000
 			result = rule >> (sep >> rule)*range
 			# TODO store AST nodes in a list?
@@ -105,9 +106,11 @@ class Grammar
 		end
 
 		def list?(*params)
-			rule = list(*params)
 			# TODO implement: RuleWrapper.new(rule,optional: true)
-			RuleWrapper.new(rule,optional: true)
+			name = "list_helper_#{params.first}".to_sym
+			#@rules[name] = list(*params)
+			rule(name => list(*params))
+			RuleWrapper.new(name,optional: true)
 		end
 
 		def eos
@@ -115,10 +118,6 @@ class Grammar
 		end
 
 	end
-
-	#def debug=(value)
-	#	@logger.level = value ? DEBUG : WARN
-	#end
 
 	def validate
 		raise NotImplementedError # TODO implement

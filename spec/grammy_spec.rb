@@ -108,6 +108,23 @@ describe Grammy do
 			}
 		end
 
+		it "optional comma seperated list with list-helper" do
+			g = Grammy.define do
+				rule item: ('a'..'z')*(2..8)
+				start start: list?(:item)
+			end
+
+			g.parse("").should be_full_match
+
+			[
+				"first",
+				"first,second",
+				"first,second,third"
+			].each { |input|
+				g.parse(input).should be_full_match
+			}
+		end
+
 		it "and only skip in rules" do
 			g = Grammy.define do
 				skipper whitespace: +(' ' | "\n" | "\t")
