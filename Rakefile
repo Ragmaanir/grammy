@@ -40,3 +40,11 @@ Spec::Rake::SpecTask.new do |t|
 	t.spec_opts = ['--options', "\"spec/spec.opts\""]
   t.spec_files = FileList['spec/**/*.rb']
 end
+
+desc "Run all examples with RCov"
+Spec::Rake::SpecTask.new('spec-cov') do |t|
+  t.spec_opts = ['--options', "\"spec/spec.opts\""]
+  t.spec_files = FileList['spec/**/*.rb']
+  t.rcov = true
+  t.rcov_opts = ['--exclude', 'spec']
+end

@@ -65,7 +65,7 @@ describe "CommonGrammars" do
 
 	it "should define float" do
 		g = Grammy.define :float do
-			rule sign: '+' | '-'
+			token sign: '+' | '-'
 			helper digit: '0'..'9'
 			helper nonzero: '1'..'9'
 			helper places: '.' >> +:digit
@@ -89,15 +89,16 @@ describe "CommonGrammars" do
 	it "should define float with exponent"
 
 	it "should define quoted string" do
-		pending "implement '-' operator"
+		pending "implement '-' operator" # TODO implement
+		
 		g = Grammy.define :quoted_string do
 			skipper ws: +' '
 
-			helper letter: ('a'..'z') | ('A'..'Z')
-			helper digit: '0'..'9'
+			fragment letter: ('a'..'z') | ('A'..'Z') | ' '
+			fragment digit: '0'..'9'
 
-			token string: '"' >> +(:letter | :DIGIT) >> '"'
-			start quoted_string: :string
+			token string: '"' >> +(:letter | :digit) >> '"'
+			start quoted_string: :string >> eos
 		end
 
 		g.parse(' " some text here" ').should be_full_match
@@ -117,8 +118,8 @@ describe "CommonGrammars" do
 			token add: '+' | '-'
 			token mult: '*' | '/'
 
-			helper digit: '0'..'9'
-			helper nonzero: '1'..'9'
+			fragment digit: '0'..'9'
+			fragment nonzero: '1'..'9'
 			token int: '0' | :nonzero >> ~:digit
 
 			rule lit: :int

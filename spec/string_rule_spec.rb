@@ -16,20 +16,6 @@ describe Grammy::Rules::StringRule do
 		end
 	end
 
-	describe "should match exactly" do
-		it "a string" do
-			g = Grammy.define do
-				start str: 'long_string'
-			end
-
-			g.rules[:str].match("long_string",0).should be_success
-			g.rules[:str].match("long_stringx",0).should be_success
-
-			g.rules[:str].match("longer_string",0).should be_failure
-			g.rules[:str].match("_long_string",0).should be_failure
-		end
-	end
-
 	describe "should accept" do
 		it "a string" do
 			g = Grammy.define do
@@ -38,10 +24,41 @@ describe Grammy::Rules::StringRule do
 
 			g.parse("long_string").should be_full_match
 			
-			g.parse("long_stringer").should be_partial_match
+			g.parse("long_stringX").should be_partial_match
 
 			g.parse("long_strin").should be_no_match
-			g.parse("along_string").should be_no_match
+			g.parse("Xlong_string").should be_no_match
+		end
+
+		it "a string with skipper but should not skip" do
+			g = Grammy.define do
+				skipper ws: +' '
+				start str: 'long_string'
+			end
+
+#			g.parse("  long_string").should be_full_match
+#
+#			g.parse(" long_stringX").should be_partial_match
+#			g.parse("long_string ").should be_partial_match
+#
+#			g.parse("  long_strin").should be_no_match
+#			g.parse(" Xlong_string").should be_no_match
+
+			g.parse("long_string").should be_full_match
+
+			g.parse("long_stringX").should be_partial_match
+			g.parse("long_string ").should be_partial_match
+
+			g.parse("long_strin").should be_no_match
+			g.parse("Xlong_string").should be_no_match
+
+			g.parse("  long_string").should be_no_match
+
+			g.parse(" long_stringX").should be_no_match
+			g.parse("  long_string ").should be_no_match
+
+			g.parse("  long_strin").should be_no_match
+			g.parse(" Xlong_string").should be_no_match
 		end
 	end
 

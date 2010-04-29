@@ -62,7 +62,7 @@ class Grammar
 
 			rule.grammar = self
 			rule.name = name
-			rule.helper = options[:helper] || false
+			rule.helper = options[:helper] #|| false
 			rule.skipping = options[:skipping]
 			rule.ignored = options[:ignored]
 			raise "duplicate rule #{name}" if @rules[name]
@@ -89,6 +89,10 @@ class Grammar
 			rule(options.merge(helper: true))
 		end
 
+		def fragment(options)
+			rule(options.merge(helper: true, skipping: false))
+		end
+
 		def start(options)
 			@start_rule = rule(options)
 		end
@@ -112,9 +116,9 @@ class Grammar
 
 	end
 
-	def debug=(value)
-		@logger.level = value ? DEBUG : WARN
-	end
+	#def debug=(value)
+	#	@logger.level = value ? DEBUG : WARN
+	#end
 
 	def validate
 		raise NotImplementedError # TODO implement
@@ -123,30 +127,44 @@ class Grammar
 	end
 
 	class ParseResult
-		attr_reader :start_pos, :end_pos, :tree
+		attr_reader :start_pos, :end_pos, :tree, :errors
 		
-		def initialize(match,stream)
+		def initialize(match,context)
 			raise unless match.is_a? Grammy::MatchResult
 			@result = match.success?
 			@start_pos, @end_pos = match.start_pos, match.end_pos
 			@tree = match.ast_node
-			@stream = stream
+			@stream = context.stream
+			@errors = context.errors
 		end
 
 		def full_match?
-			@result and @end_pos == @stream.length
+			match == :full
 		end
 
 		def partial_match?
-			@result and not full_match?
+			match == :partial
 		end
 
 		def no_match?
-			not full_match? and not partial_match?
+			match == :none
+		end
+
+		def match
+			if @result and @end_pos == @stream.length then :full
+			elsif @result then :partial
+			else
+				:none
+			end
 		end
 
 		def to_s
-			"full: #{full_match?}, part: #{partial_match?}, none: #{no_match?}, range: #{@start_pos}-#{@end_pos}"
+			<<-STR.gsub(/^\s+/,'')
+			----- RESULT -----
+			Match: #{match.to_s}, range: #{@start_pos}-#{@end_pos}
+			Errors(#{errors.length}):
+			#{errors.map(&:to_s).join}
+			STR
 		end
 	end
 
@@ -158,25 +176,34 @@ class Grammar
 
 		logger.debug("##### Parsing(#{options[:rule]}): #{stream.inspect}")
 
-		@line_number = 1
+		context = Grammy::ParseContext.new(self,nil,stream)
+
 		begin
-			match = rule.match(stream,0)
+			match = rule.match(context)
 		rescue Exception => e
 			# TODO debug only
 			puts e
 			puts e.backtrace
 			raise e
 		end
-		@line_number = nil
 
 		Log4r::NDC.clear
 		logger.debug("##### success: #{match.success?}")
 
 		logger.level = WARN if options[:debug]
 
-		result = ParseResult.new(match,stream)
-		puts result if options[:debug]
+		result = ParseResult.new(match,context)
+		if options[:debug]
+			puts result
+			result.tree.to_image('debug_'+@start_rule.name)
+		end
 		result
+	end
+
+	# shortcut for:
+	#		parse('...',debug: true)
+	def parse!(stream,options={})
+		parse(stream,options.merge(debug: true))
 	end
 	
 end

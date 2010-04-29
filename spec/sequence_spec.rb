@@ -172,17 +172,18 @@ describe Grammy::Rules::Sequence do
 				start string: :lower >> :lower & :lower >> :lower
 			end
 
+			# TODO move to definition spec
 			g.rules[:string].should have(4).children
 			g.rules[:string].should be_backtracking
 			g.rules[:string].children[2].should_not be_backtracking
 
-			expect{ g.parse("") }.to_not raise_exception(Grammy::ParseError)
-			expect{ g.parse("x") }.to_not raise_exception(Grammy::ParseError)
-			expect{ g.parse("a") }.to_not raise_exception(Grammy::ParseError)
+			g.parse("").should have(0).errors
+			g.parse("x").should have(0).errors
+			g.parse("a").should have(0).errors
 
-			expect{ g.parse("aa") }.to raise_exception(Grammy::ParseError)
-			expect{ g.parse("aa1a") }.to raise_exception(Grammy::ParseError)
-			expect{ g.parse("aaa3") }.to raise_exception(Grammy::ParseError)
+			g.parse("aa").should have(1).errors
+			g.parse("aa1a").should have(1).errors
+			g.parse("aaa3").should have(1).errors
 		end
 
 		it "in alternative sequences when backtracking not allowed" do
@@ -192,96 +193,55 @@ describe Grammy::Rules::Sequence do
 				start string: (:a & :a) | (:b & :b)
 			end
 
+			# TODO move to definition spec
 			g.rules[:string].should have(2).children
 			g.rules[:string].children[0].should have(2).children
 			g.rules[:string].children[1].should have(2).children
 			#g.rules[:string].should_not be_backtracking
 
-			expect{ g.parse("") }.to_not raise_exception(Grammy::ParseError)
-			expect{ g.parse("x") }.to_not raise_exception(Grammy::ParseError)
-			expect{ g.parse("aa") }.to_not raise_exception(Grammy::ParseError)
-			expect{ g.parse("bb") }.to_not raise_exception(Grammy::ParseError)
+			g.parse("").should have(0).errors
+			g.parse("x").should have(0).errors
+			g.parse("aa").should have(0).errors
+			g.parse("bb").should have(0).errors
 
-			expect{ g.parse("a") }.to raise_exception(Grammy::ParseError)
-			expect{ g.parse("b") }.to raise_exception(Grammy::ParseError)
-			expect{ g.parse("ab") }.to raise_exception(Grammy::ParseError)
-			expect{ g.parse("ba") }.to raise_exception(Grammy::ParseError)
+			g.parse("a").should have(1).errors
+			g.parse("b").should have(1).errors
+			g.parse("ab").should have(1).errors
+			g.parse("ba").should have(1).errors
 		end
 
-		it "in alternative sequences when backtracking not allowed" do
+		it "in sequence with repetition when backtracking not allowed" do
 			g = Grammy.define do
 				skipper ws: +(' ' | "\n" | "\t")
 				helper word: ('a'..'z')*(3..10)
 				start string: +:word & eos
 			end
 
+			# TODO move to definition spec
 			g.rules[:string].should have(2).children
 
-			expect{ g.parse("abx") }.to_not raise_exception(Grammy::ParseError)
-			expect{ g.parse("  abdfc \n") }.to_not raise_exception(Grammy::ParseError)
-			expect{ g.parse("asd asd \n ggth") }.to_not raise_exception(Grammy::ParseError)
+			g.parse("abx").should have(0).errors
+			g.parse("  abdfc \n").should have(0).errors
+			g.parse("asd asd \n ggth").should have(0).errors
 			
-			begin
-				g.parse("abc asd \n 3 ", debug: true)
-			rescue Grammy::ParseError => e
-				e.line_number.should == 2
-				e.message.should == "Syntax error in line 2 at X: expected :word"
-			end
+			g.parse("abc asd \n 3 ").should have(1).errors
+			g.parse("abc asd \n asDe ").should have(1).errors
 		end
-	end
 
-	describe "should" do
-		it "return sequence of rules as string with to_s" do
+		it "in alternative sequences with words when backtracking not allowed" do
 			g = Grammy.define do
-				token a: 'ab'
-				token b: 'asd'
-				start start: :a >> :b >> :a
+				start string: ('aax' & 'bbx') | ('cc' & 'dd')
 			end
 
-			g.rules[:start].to_s.should == ":a >> :b >> :a"
+			g.parse("aaxbbx").should have(0).errors
+			g.parse("ccdd").should have(0).errors
+
+			g.parse("aax").should have(1).errors
+			g.parse("cc").should have(1).errors
+			g.parse!("aaxb").should have(1).errors
+			g.parse("ccd").should have(1).errors
 		end
 
-		it "return sequence with optional rules as string with to_s" do
-			g = Grammy.define do
-				token a: 'ab'
-				token b: 'asd'
-				start start: :a >> :b? >> :a?
-			end
-
-			g.rules[:start].to_s.should == ":a >> :b? >> :a?"
-		end
-
-		it "return sequence of strings as string with to_s" do
-			g = Grammy.define do
-				start start: 'a' >> 'y' >> 'z'
-			end
-
-			g.rules[:start].to_s.should == "'a' >> 'y' >> 'z'"
-		end
-		
-		it "return sequence with an alternative as string with to_s" do
-			g = Grammy.define do
-				start start: 'a' >> ('b' | 'cde')
-			end
-
-			g.rules[:start].to_s.should == "'a' >> ('b' | 'cde')"
-		end
-
-		it "return sequence with repetition as string with to_s" do
-			g = Grammy.define do
-				start start: 'a' >> ~'xyz' >> 'c'
-			end
-
-			g.rules[:start].to_s.should == "'a' >> ~'xyz' >> 'c'"
-		end
-
-		it "return sequence with repetition of subrule as string with to_s" do
-			g = Grammy.define do
-				start start: 'a' >> ~('xy' >> 'z') >> 'c'
-			end
-
-			g.rules[:start].to_s.should == "'a' >> ~('xy' >> 'z') >> 'c'"
-		end
-	end
+	end # DESC: detect errors
 
 end

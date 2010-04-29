@@ -2,7 +2,7 @@ module Grammy
 
 	class MatchResult
 		attr_reader :rule, :result, :ast_node
-		attr_accessor :start_pos, :end_pos
+		attr_accessor :start_pos, :end_pos, :backtracking
 
 		# start_pos is the index of the first matched character
 		# end_pos is the index of the character that follows the last matched character
@@ -15,10 +15,15 @@ module Grammy
 			@ast_node = ast_node
 			@start_pos = start_pos
 			@end_pos = end_pos
+			@backtracking = true
 		end
 
 		def length
 			end_pos - start_pos
+		end
+
+		def backtracking?
+			@backtracking
 		end
 
 		def success?
