@@ -11,13 +11,13 @@ spec = Gem::Specification.new do |s|
   s.name = 'Grammy'
   s.version = '0.0.5'
   s.has_rdoc = true
-  s.extra_rdoc_files = ['README', 'LICENSE']
+  s.extra_rdoc_files = ['README']
   s.summary = 'Grammy is a DSL to describe Grammars and gernerate LL Parsers'
   s.description = s.summary
   s.author = 'Ragmaanir'
   s.email = 'ragmaanir@gmail.com'
 	s.homepage = 'http://ragmaanir.mypresident.de'
-  s.files = %w(LICENSE README Rakefile) + Dir.glob("{lib,spec}/**/*")
+  s.files = %w(README Rakefile) + Dir.glob("{lib,spec}/**/*")
   s.require_path = "lib"
 end
 

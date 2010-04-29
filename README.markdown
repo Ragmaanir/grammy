@@ -18,7 +18,7 @@ Features
 Todo
 ----
 
-- Error handling: disable backtracking with the `/` operator
+- Error handling: disable backtracking with the `&` operator
 - Subtraction: +('a'..'z') - 'reserved'
 - semantic actions
 - validation (rules which never match, left recursion)
