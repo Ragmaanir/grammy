@@ -38,12 +38,13 @@ module Grammy
 				}
 
 				unless ignored?
-					node = create_ast_node(context,[start_pos,match.end_pos])
-					node.add_child(match.ast_node) if match.ast_node
+					children = []
+					children << match.ast_node if match.ast_node
+					node = create_ast_node(context,[start_pos,match.end_pos],children)
 				end
 
 				result = MatchResult.new(self,!!success,node,start_pos,match.end_pos)
-				debug_end(result)
+				debug_end(context,result)
 				result
 			end
 

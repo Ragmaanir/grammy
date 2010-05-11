@@ -99,22 +99,22 @@ describe Grammy::ParseContext do
 		c.line.should == ""
 	end
 
-	it "should not move position behind backtrack border" do
-		c = Grammy::ParseContext.new(nil,nil,"line1\nline2\nline3\nline4\n")
-
-		c.position += 6
-		c.line_number.should == 2
-		c.line_start.should == 6
-		c.column.should == 0
-		c.line.should == "line2"
-
-		c.set_backtrack_border!
-
-		expect{ c.position -= 1 }.to raise_error
-
-		c.position += 8
-
-		expect{ c.position -= 9 }.to raise_error
-	end
+#	it "should not move position behind backtrack border" do
+#		c = Grammy::ParseContext.new(nil,nil,"line1\nline2\nline3\nline4\n")
+#
+#		c.position += 6
+#		c.line_number.should == 2
+#		c.line_start.should == 6
+#		c.column.should == 0
+#		c.line.should == "line2"
+#
+#		c.set_backtrack_border!
+#
+#		expect{ c.position -= 1 }.to raise_error
+#
+#		c.position += 8
+#
+#		expect{ c.position -= 9 }.to raise_error
+#	end
 
 end

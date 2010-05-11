@@ -6,7 +6,9 @@ class AST
 
 		def initialize(name,options={})
 			@name = name || 'anonymous'
-			@children = options[:children] || []
+			@children = []
+			options[:children].each{ |child| add_child(child) } if options[:children]
+
 			@start_pos, @end_pos = options[:range]
 			@merge = options[:merge]
 			@stream = options[:stream] || raise("no stream given")

@@ -14,7 +14,7 @@ module Grammy
 				seq = seq.map{|elem| Rule.to_rule(elem) }
 
 				seq = seq.map{|elem|
-					if elem.is_a? Sequence and elem.helper?
+					if elem.is_a? Sequence #and elem.helper?
 						if not elem.backtracking?
 							elem.children.first.backtracking = false
 						end
@@ -61,14 +61,19 @@ module Grammy
 				end_pos = context.position
 
 				unless ignored?
-					node = create_ast_node(context,[start_pos,end_pos])
-					results.each{|res| node.add_child(res.ast_node) if res.ast_node }
+					children = results.map{|res| res.ast_node }.compact
+					node = create_ast_node(context,[start_pos,end_pos],children)
 				end
+
+#				if generate_ast?
+#					children = results.map{|res| res.ast_node }.compact
+#					node = create_ast_node(context,[start_pos,end_pos],children)
+#				end
 
 				result = MatchResult.new(self,!failed,node,start_pos,end_pos)
 				result.backtracking = do_backtracking
 
-				debug_end(result)
+				debug_end(context,result)
 				result
 			end
 

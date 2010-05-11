@@ -54,8 +54,8 @@ describe Grammy do
 			phrase.should have(2).children
 			phrase.children.each{|child| child.should be_a Grammar::RuleWrapper }
 
-			g.rules[:a].should be_helper
-			g.rules[:b].should_not be_helper
+			g.rules[:a].should be_merging_nodes
+			g.rules[:b].should_not be_merging_nodes
 			
 			phrase.children[0].rule.should == g.rules[:a]
 			phrase.children[1].rule.should == g.rules[:b]
@@ -134,6 +134,19 @@ describe Grammy do
 			end
 
 			g.parse("ab d\t\n ab d").should be_full_match
+		end
+
+		it "should modify ast node" do
+			g = Grammy.define do
+				rule a: 'abc'
+				rule b: :a | 'fail' , modify_ast: lambda{|node| node.children.first }
+				rule c: :b | 'fail' , modify_ast: lambda{|node| node.children.first }
+				start start: :c | 'fail'
+			end
+
+			ast = g.parse('abc').tree
+			ast.should have(1).children
+			ast.children.first.name.should == :a
 		end
 
 	end

@@ -46,12 +46,12 @@ module Grammy
 				end_pos = success ? context.position : start_pos
 
 				unless ignored?
-					node = create_ast_node(context,[start_pos,end_pos])
-					results.each{|res| node.add_child(res.ast_node) }
+					children = results.map{|res| res.ast_node }.compact
+					node = create_ast_node(context,[start_pos,end_pos],children)
 				end
 
 				result = MatchResult.new(self, !!success, node, start_pos, end_pos)
-				debug_end(result)
+				debug_end(context,result)
 				result
 			end
 

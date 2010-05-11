@@ -37,15 +37,15 @@ module Grammy
 			end
 
 			def match(context)
-				debug_start(context)
+				debug_start(context) if rule.debugging?
 
 				match = rule.match(context)
 
 				success = match.success? || optional?
 
-				result = MatchResult.new(self, success, match.ast_node, match.start_pos, match.end_pos)
+				result = MatchResult.new(self, success, (match.ast_node if match.success?), match.start_pos, match.end_pos)
 
-				debug_end(result)
+				debug_end(context,result) if rule.debugging?
 				result
 			end
 

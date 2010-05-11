@@ -1,6 +1,8 @@
 
 Todo
 ==================================================
+##   : Predicates: Positive and Negative Lookahead (read without consuming)
+##   : Add Rule-Option 'debug' (Bool). Anonymous rules should have debug=false and named rules debug = true
 ###  : ParseContext: LineNumber calculation: precalculate indices of linebreaks
 ##   : raise when tokens are nested
 #    : Maybe use Aquarium for logging with AOP. Or for less dependencies: Rule#match does logging, Rule#match_impl does the real matching
@@ -11,28 +13,32 @@ Todo
 ###  : AST Node naming & reordering: use '^', '<=>' ?
 ##   : support Regexp as rules
 ###  : GrammySpec: SpecFramework for grammars: expectations for acceptance and generated AST
+		- yaml file with match expectations: full/partial/no match
+		- yaml file with error expectations: line, column
 #    : Validate Grammar:
 		- check for left recursion
 		- check for never matching rules: ~a >> a (BNF: a* a) #=> never matches, (:a? | :b?) #=> always matches first
 ##   : Make constants accessible in grammar definition dsl
 ##   : support exceptions: x: ('a'..'z')*3 - 'lol'
-##   : give tokens an name/id for ast tree: :ident.name
+##   : give tokens a name/id for ast tree: :ident.name
 ##   : Make predefined parsers available: use :string, :int, :float
 ##   : automatically check for valid identifiers: insert identifiers into table and check identifiers against that table
 #    : Analyze grammar: potential ambiguities etc; style tips: +:asd? => ~:asd
-##   : Error recognition/handling: disallow backtracking: '&' or '/' instead of '>>' or use ':asd!' ?
 ##   : Skipper before and after token? only in sequence?
 ##   : Rule.to_s #=> (a >> b) | c
 #    : nice to have: 1..9 instead of '1'..'9'
-#    : optional rules: :a >> [(',' >> :a)+] # change [x,y] => alternative?, [x] => optional
+?    : optional rules: :a >> [(',' >> :a)+] # change [x,y] => alternative?, [x] => optional
 #### : pass options to rule: rule a: 'a', helper: true, skipping: false
 ###  : Use ruby-graphviz to output the Grammar: grammar.to_image('grammar')
 ###  : Match anything: :a >> ~any >> :b
 ##   : Skipper class which wraps a rule
+#    : grammar.to_s #=> list rules and skippers
 
 
 Done
 ==================================================
+###  : Optional rules should only generate ast node when they match something.
+##   : Error recognition/handling: disallow backtracking: '&' instead of '>>'
 ##   : track linenumbers for error report and compilation (semantic action?)
 #### : ParserContext: stores line number, current line, head position, stream, symbol table, etc
 ##   : Seperate files for rules

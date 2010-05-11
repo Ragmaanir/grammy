@@ -31,8 +31,9 @@ module Grammy
 				end_pos = context.position
 
 				node = create_ast_node(context,[start_pos,end_pos]) if success and not ignored?
+				
 				match = MatchResult.new(self,success,node,start_pos,end_pos)
-				debug_end(match)
+				debug_end(context,match)
 				match
 			end
 

@@ -29,7 +29,7 @@ module Grammy
 
 				match = MatchResult.new(self,success,node,start_pos,end_pos)
 
-				debug_end(match)
+				debug_end(context,match)
 				match
 			end
 

@@ -69,7 +69,7 @@ describe Grammy::Rules::Sequence do
 			end
 
 			g.skipper.should be_a Grammar::Alternatives
-			g.skipper.should be_helper
+			g.skipper.type.should == :skipper
 			g.skipper.should be_ignored
 			g.rules[:a].should_not be_skipping
 			g.rules[:start].should be_skipping
@@ -84,9 +84,6 @@ describe Grammy::Rules::Sequence do
 			token_r = g.rules[:token]
 			token_r.should be_a Grammar::Sequence
 
-			#puts token_r
-			#p token_r.children
-			#token_r.children[2].should_not be_backtracking
 			token_r.should have(4).children
 			token_r.should be_backtracking
 			token_r.children[2].should_not be_backtracking
@@ -103,8 +100,8 @@ describe Grammy::Rules::Sequence do
 			
 			start_r.should have(2).children
 
-			start_r.children[0].rule.should be_helper
-			start_r.children[1].rule.should_not be_helper
+			start_r.children[0].rule.should be_merging_nodes
+			start_r.children[1].rule.should_not be_merging_node
 		end
 
 	end
@@ -172,11 +169,6 @@ describe Grammy::Rules::Sequence do
 				start string: :lower >> :lower & :lower >> :lower
 			end
 
-			# TODO move to definition spec
-			g.rules[:string].should have(4).children
-			g.rules[:string].should be_backtracking
-			g.rules[:string].children[2].should_not be_backtracking
-
 			g.parse("").should have(0).errors
 			g.parse("x").should have(0).errors
 			g.parse("a").should have(0).errors
@@ -193,12 +185,6 @@ describe Grammy::Rules::Sequence do
 				start string: (:a & :a) | (:b & :b)
 			end
 
-			# TODO move to definition spec
-			g.rules[:string].should have(2).children
-			g.rules[:string].children[0].should have(2).children
-			g.rules[:string].children[1].should have(2).children
-			#g.rules[:string].should_not be_backtracking
-
 			g.parse("").should have(0).errors
 			g.parse("x").should have(0).errors
 			g.parse("aa").should have(0).errors
@@ -213,12 +199,9 @@ describe Grammy::Rules::Sequence do
 		it "in sequence with repetition when backtracking not allowed" do
 			g = Grammy.define do
 				skipper ws: +(' ' | "\n" | "\t")
-				helper word: ('a'..'z')*(3..10)
+				token word: ('a'..'z')*(3..10) #,debug: true
 				start string: +:word & eos
 			end
-
-			# TODO move to definition spec
-			g.rules[:string].should have(2).children
 
 			g.parse("abx").should have(0).errors
 			g.parse("  abdfc \n").should have(0).errors
@@ -240,6 +223,18 @@ describe Grammy::Rules::Sequence do
 			g.parse("cc").should have(1).errors
 			g.parse("aaxb").should have(1).errors
 			g.parse("ccd").should have(1).errors
+		end
+
+		it "in nested sequences when backtracking not allowed" do
+			g = Grammy.define do
+				rule first: 'a' & 'A'
+				rule last: 'b' & 'B'
+				start lang: :first & :last
+			end
+
+			g.parse("aAbB").should have(0).errors
+			g.parse("aAB").should have(1).errors
+			g.parse("aabB").should have(1).errors
 		end
 
 	end # DESC: detect errors

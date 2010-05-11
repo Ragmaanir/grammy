@@ -16,29 +16,38 @@ module Grammy
 		end
 
 		def position=(new_pos)
-			raise "new position must be > 0" if new_pos < 0
-			raise "cant backtrack behind backtrack border" if new_pos < @backtrack_border
-
-			length = new_pos - @position
-
-			if length < 0 # moving backwards
-				part = @stream[new_pos,length.abs]
-				newlines = part.count("\n")
-				@line_number -= newlines
-				@line_start = @stream[0..new_pos].rindex("\n") || 0
-			elsif length > 0 # moving forward
-				part = @stream[@position,length]
-				newlines = part.count("\n")
-				@line_number += newlines
-				@line_start = part.rindex("\n") + @position + 1 if newlines > 0
+			raise "new position must be >= 0" if new_pos < 0
+			#raise "cant backtrack behind backtrack border" if new_pos < @backtrack_border
+			if new_pos < @backtrack_border
+				#raise "cant backtrack to '#{new_pos}' because border is at: #{line_number}:#{column} '#{line}'"
+				@backtrack_border = new_pos
 			end
+
+			#length = new_pos - @position
+
+#			if length < 0 # moving backwards
+#				part = @stream[new_pos,length.abs]
+#				newlines = part.count("\n")
+#				@line_number -= newlines
+#				@line_start = @stream[0..new_pos].rindex("\n") || 0
+#			elsif length > 0 # moving forward
+#				part = @stream[@position,length]
+#				newlines = part.count("\n")
+#				@line_number += newlines
+#				@line_start = part.rindex("\n") + @position + 1 if newlines > 0
+#			end
+
+			@line_number = @stream[0,new_pos].count("\n") + 1
+			@line_start = @stream[0,new_pos].rindex("\n") || 0
+			@line_start += 1 if @line_number > 1
 
 			@position = new_pos
 		end
 
 		def line
 			rest = @stream[@line_start..-1]
-			rest[/([^\n]*)\n?/,1] # all characters to next newline or eos
+			#rest[/([^\n]*)\n?/,1] # all characters to next newline or eos
+			rest[/[^\n]*/]
 		end
 
 		def column

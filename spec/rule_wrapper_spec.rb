@@ -86,6 +86,16 @@ describe Grammy::Rules::RuleWrapper do
 			g.parse("<>").tree.should have(0).children
 		end
 
+		it "not generate ast-node with wrapper rules when optional rule skipped" do
+			g = Grammy.define do
+				rule a: 'a' >> 'b'
+				rule x: 'x'
+				start char: :x >> :a? >> :x
+			end
+
+			g.parse("xx").tree.should have(2).children
+		end
+
 		it "generate ast-node when optional rule not skipped" do
 			g = Grammy.define do
 				rule a: 'a'
