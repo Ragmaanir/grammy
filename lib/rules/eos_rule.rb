@@ -14,7 +14,7 @@ module Grammy
 			def match(context)
 				debug_start(context)
 
-				skip(context) if skipping?
+				skip(context) if using_skipper?
 				end_pos = start_pos = context.position
 				success = context.stream[end_pos] == nil
 

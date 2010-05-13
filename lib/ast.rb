@@ -1,17 +1,17 @@
 class AST
 
 	class Node
-		attr_accessor :name, :children, :range, :start_pos, :end_pos
-		attr_reader :stream
+		attr_reader :name, :range, :start_pos, :end_pos, :children, :stream
 
 		def initialize(name,options={})
 			@name = name || 'anonymous'
 			@children = []
-			options[:children].each{ |child| add_child(child) } if options[:children]
 
 			@start_pos, @end_pos = options[:range]
 			@merge = options[:merge]
 			@stream = options[:stream] || raise("no stream given")
+
+			options[:children].each{ |child| add_child(child) } if options[:children]
 		end
 
 		def range
@@ -23,7 +23,6 @@ class AST
 		end
 
 		def data
-			raise "node '#{name}' has no stream" unless stream
 			@stream[@start_pos,length]
 		end
 

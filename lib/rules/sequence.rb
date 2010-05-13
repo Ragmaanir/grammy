@@ -14,7 +14,7 @@ module Grammy
 				seq = seq.map{|elem| Rule.to_rule(elem) }
 
 				seq = seq.map{|elem|
-					if elem.is_a? Sequence #and elem.helper?
+					if elem.is_a? Sequence and elem.anonymous?
 						if not elem.backtracking?
 							elem.children.first.backtracking = false
 						end
@@ -39,7 +39,7 @@ module Grammy
 				# --find the first rule in the sequence that fails to match the input
 				# - add the results of all succeeding rules to the match_results array
 				failed = @children.find { |e|
-					skip(context) if skipping?
+					skip(context) if using_skipper?
 					match = e.match(context)
 					do_backtracking &&= e.backtracking?
 
@@ -60,15 +60,10 @@ module Grammy
 
 				end_pos = context.position
 
-				unless ignored?
+				if generating_ast?
 					children = results.map{|res| res.ast_node }.compact
 					node = create_ast_node(context,[start_pos,end_pos],children)
 				end
-
-#				if generate_ast?
-#					children = results.map{|res| res.ast_node }.compact
-#					node = create_ast_node(context,[start_pos,end_pos],children)
-#				end
 
 				result = MatchResult.new(self,!failed,node,start_pos,end_pos)
 				result.backtracking = do_backtracking

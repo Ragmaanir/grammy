@@ -1,6 +1,5 @@
 
-gem 'rspec'
-require 'Grammy'
+require 'spec/spec_helper'
 
 describe "RemovableModules" do
 

@@ -1,86 +1,8 @@
 
+require 'rules/operators'
+
 module Grammy
 	module Rules
-
-		MAX_REPETITIONS = 10_000
-
-		# Special operators used in the Grammar DSL.
-		# The module is designed to be removable so the extra operators
-		# wont pollute String, Symbol and Range.
-		module Operators
-
-			# includes the module so that it can be removed later with #exclude
-			def self.included(target)
-				# create a clone of the module so the methods can be removed from the
-				# clone without affecting the original module
-				cloned_mod = self.clone
-				my_mod_name = name
-
-				# store the module clone that is included
-				target.class_eval {
-					@@removable_modules ||= {}
-					@@removable_modules[my_mod_name] = cloned_mod
-				}
-
-				# make backup of already defined methods
-				cloned_mod.instance_methods.each {|imeth|
-					if target.instance_methods.include? imeth
-						target.send(:alias_method,"__#{imeth}_backup",imeth)
-					end
-				}
-
-				cloned_mod.send(:append_features,target)
-			end
-
-			# removes the module from the target by
-			# removing added methods and aliasing the backup
-			# methods with their original name
-			def self.exclude(target)
-				# get the module
-				mod = target.send(:class_eval){
-					@@removable_modules
-				}[name] || raise("module '#{name}' not found in internal hash, cant exclude it")
-
-				# remove / restore the methods
-				mod.instance_methods.each {|imeth|
-					mod.send(:undef_method,imeth)
-
-					if target.instance_methods.include? "__#{imeth}_backup"
-						target.send(:alias_method,imeth,"__#{imeth}_backup")
-						target.send(:undef_method,"__#{imeth}_backup")
-					end
-				}
-			end
-
-			def &(right)
-				right = Rule.to_rule(right)
-				right.backtracking = false
-				Sequence.new(nil,[self,right], helper: true)
-			end
-
-			def >>(other)
-				Sequence.new(nil,[self,other], helper: true)
-			end
-
-			def |(other)
-				Alternatives.new(nil,[self,other], helper: true)
-			end
-
-			def *(times)
-				times = times..times if times.is_a? Integer
-				raise("times must be a range or int but was: '#{times}'") unless times.is_a? Range
-
-				Repetition.new(nil,Rule.to_rule(self),times: times, helper: true)
-			end
-
-			def +@
-				Repetition.new(nil,self,times: 1..MAX_REPETITIONS, helper: true)
-			end
-
-			def ~@
-				Repetition.new(nil,self,times: 0..MAX_REPETITIONS, helper: true)
-			end
-		end
 
 		#
 		# RULE
@@ -88,9 +10,13 @@ module Grammy
 		class Rule
 			include Operators
 
+			Callbacks = [:modify_ast,:on_error,:on_match]
+			Options = [:backtracking,:using_skipper,:merging_nodes,:generating_ast,:debug,:type,:times,:optional] + Callbacks
+			DebugModes = [:like_root,:all,:root_only,:none]
+
 			attr_accessor :name, :parent
 			attr_reader :grammar, :options, :debug, :type
-			attr_writer :helper, :backtracking, :skipping, :ignored
+			attr_writer :backtracking
 
 			def initialize(name,options={})
 				setup(name,options)
@@ -98,18 +24,43 @@ module Grammy
 
 			def setup(name,options={})
 				@name = name
-				@helper = options.delete(:helper) || !name
-				@callbacks = options.extract!(:modify_ast,:on_error,:on_match)
 
-				options = options.with_default(backtracking: true, skipping: false, ignored: false, debug: :like_root, type: :anonymous)
+				unsupported = options.reject{ |key,_| Options.include? key }
+				raise "unsupported keys: #{unsupported.inspect}" if unsupported.any?
+
+				options = options.with_default(
+					backtracking: true,
+					using_skipper: false,
+					debug: :like_root,
+					type: :anonymous,
+					merging_nodes: true,
+					generating_ast: true
+				)
+				
+				@callbacks = options.extract!(*Callbacks)
+
+				@merging_nodes = options.delete(:merging_nodes)
+				@generating_ast = options.delete(:generating_ast)
 				@backtracking = options.delete(:backtracking)
-				@skipping = options.delete(:skipping)
-				@ignored = options.delete(:ignored)
+				@using_skipper = options.delete(:using_skipper)
+				
 				@debug = options.delete(:debug)
 				@type = options.delete(:type)
 				@options = options
+
+				raise "@merging_nodes was #{@merging_nodes.inspect}" unless [true,false].include? @merging_nodes
+				raise "invalid debug mode: #{@debug.inspect}" unless DebugModes.include? @debug
+				raise unless [true,false].include? @generating_ast
 			end
 
+			# The #root method returns the production that the rule is part of.
+			# 
+			# *Example*
+			# for the rule:
+			#		rule x: :a >> +'x'
+			# the following
+			#		x.children[1].children[0].root
+			# returns x
 			def root
 				cur_rule = self
 				while cur_rule.parent
@@ -119,9 +70,15 @@ module Grammy
 				cur_rule
 			end
 
+			def anonymous?
+				!@name
+			end
+
+			# Returns true iff debugging is turned on for this rule.
+			# The method takes into account the setting for the root of the rule:
+			# - when the debug mode of the root rule is set to :all, then all subrules have debugging turned on
+			# - when the debug mode of the root rule is set to :root_only, then only the root rule has debugging turned on
 			def debugging?
-				raise "invalid debug mode: #{@debug.inspect}" unless [:like_root,:all,:root_only,:none].include? @debug
-				
 				if root.debug == :all
 					true
 				elsif root.debug == :root_only
@@ -131,6 +88,7 @@ module Grammy
 				end
 			end
 
+			# TODO needed?
 			def type
 				result = @type || root.type
 				raise unless [:anonymous,:rule,:token,:fragment,:skipper].include? result
@@ -142,44 +100,23 @@ module Grammy
 				self.class.name.split('::').last
 			end
 
-			## true iff this rule is a helper rule. a rule is automatically a helper rule when it has no name.
-			## a helper rule generates no AST::Node
-			#def helper?
-			#	raise unless [true,false].include? @helper
-			#	@helper
-			#end
-
 			# TRUE iff the node generated by this rule should be mergeable with nodes of the same type.
 			# Used to store token text in one node.
 			def merging_nodes?
-				raise unless [true,false].include? @helper
-				@helper
-			end
-
-			# TRUE iff a node should be generated when this rule matches.
-			def generating_node?
-				raise unless [true,false].include? @helper
-				@helper
+				@merging_nodes
 			end
 
 			def backtracking?
 				raise unless [true,false].include? @backtracking
-				@backtracking != false
+				@backtracking
 			end
 
-			def skipping?
-				grammar.skipper and (@skipping or (root.skipping? unless root==self))
+			def using_skipper?
+				grammar.skipper and (@using_skipper or (root.using_skipper? unless root==self))
 			end
 
 			def generating_ast?
-				raise unless [true,false].include? @ignored
-				@ignored
-			end
-
-			# true when the matched string should not be part of the generated AST (like ',' or '(')
-			def ignored?
-				raise unless [true,false].include? @ignored
-				@ignored
+				@generating_ast
 			end
 
 			def children
@@ -217,11 +154,11 @@ module Grammy
 
 			def self.to_rule(input)
 				case input
-				when Range then RangeRule.new(nil,input,helper: true)
-				when Array then Alternatives.new(nil,input, helper: true)
-				when Symbol then RuleWrapper.new(input,helper: true)
-				when String then StringRule.new(input,helper: true)
-				when Integer then StringRule.new(input.to_s,helper: true)
+				when Range then RangeRule.new(nil,input)
+				when Array then Alternatives.new(nil,input)
+				when Symbol then RuleWrapper.new(input)
+				when String then StringRule.new(input)
+				when Integer then StringRule.new(input.to_s)
 				when Rule then input
 				else
 					raise "invalid input '#{input}', cant convert to a rule"
@@ -279,17 +216,6 @@ module Grammy
 			def children
 				[]
 			end
-
-			#def debug_start(context)
-			#	Log4r::NDC.push(debug_scope_name)
-			#end
-
-			#def debug_end(context,match)
-			#	data = match.ast_node.data if match.ast_node
-			#	result = match.success? ? "SUCCESS" : "FAIL"
-			#	grammar.logger.debug("# #{result} => #{data.inspect},#{match.start_pos}..#{match.end_pos}") if debugging?
-			#	Log4r::NDC.pop
-			#end
 		end
 
 	end # Rules

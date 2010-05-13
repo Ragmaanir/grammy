@@ -1,7 +1,5 @@
 
-gem 'rspec'
-
-require 'Grammy'
+require 'spec/spec_helper'
 
 describe "CommonGrammars" do
 

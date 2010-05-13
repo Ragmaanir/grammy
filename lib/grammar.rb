@@ -61,7 +61,13 @@ class Grammar
 		def rule(options)
 			name,defn = options.shift
 
-			options = options.with_default(skipping: true, helper: false, ignored: false, debug: :all, type: :rule)
+			options = options.with_default(
+				using_skipper: true,
+				merging_nodes: false,
+				generating_ast: true,
+				debug: :all,
+				type: :rule
+			)
 
 			rule = Rule.to_rule(defn)
 
@@ -73,30 +79,32 @@ class Grammar
 			@rules[name] = rule
 		end
 
+		# no parameters passed => returns the skipper
+		# options passed => creates and registers a skipper
 		def skipper(options={})
 			if options == {}
 				@skipper
 			else
-				@skipper = rule(options.with_default(debug: :root_only).merge(skipping: false, ignored: true, type: :skipper))
+				@skipper = rule(options.with_default(debug: :root_only).merge(using_skipper: false, generating_ast: false, type: :skipper))
 			end
 		end
 
-		# creates a rule which does not use the skipper
+		# creates a rule with these options:
+		# - does not use skipper
+		# - merges nodes
 		def token(options)
-			rule(options.with_default(debug: :root_only).merge(skipping: false, helper: false, type: :token))
+			rule(options.with_default(debug: :root_only).merge(using_skipper: false, merging_nodes: false, type: :token))
 		end
 
-		# creates a rule with the helper: true option
-		# the rule creates mergeable AST nodes, e.g. for letters:
-		#		+('a'..'z') #=> creates only one AST node, not one for each letter
+		# generates no extra AST-node
 		def helper(options)
-			rule(options.merge(helper: true, type: :helper))
+			rule(options.merge(merging_nodes: true, type: :helper))
 		end
 
 		# Create a rule which does not use a skipper and creates mergeable AST-nodes.
 		# This can be used to decompose a token into smaller fragments.
 		def fragment(options)
-			rule(options.with_default(debug: :none).merge(helper: true, skipping: false, type: :fragment))
+			rule(options.with_default(debug: :none).merge(merging_nodes: true, using_skipper: false, type: :fragment))
 		end
 
 		def start(options)
@@ -127,6 +135,7 @@ class Grammar
 		raise NotImplementedError # TODO implement
 		# check for always fail		: ~:a >> :a
 		# check for left recursion: x: :x | :y
+		# check that tokens are not nested
 	end
 
 	# Stores the result of a call to Grammar#parse.

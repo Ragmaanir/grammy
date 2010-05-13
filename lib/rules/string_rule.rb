@@ -24,7 +24,7 @@ module Grammy
 				if success
 					end_pos += @string.length
 					context.position = end_pos
-					node = create_ast_node(context,[start_pos,end_pos]) unless ignored?
+					node = create_ast_node(context,[start_pos,end_pos]) if generating_ast?
 				end
 
 				match = MatchResult.new(self,success,node,start_pos,end_pos)

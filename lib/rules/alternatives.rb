@@ -28,7 +28,7 @@ module Grammy
 				debug_start(context)
 				match = nil
 
-				skip(context) if skipping?
+				skip(context) if using_skipper?
 				start_pos = context.position
 
 				success = @children.find { |e|
@@ -37,7 +37,7 @@ module Grammy
 					match.success? or not match.backtracking? # dont try other alternatives when a subrule disabled backtracking
 				}
 
-				unless ignored?
+				if generating_ast?
 					children = []
 					children << match.ast_node if match.ast_node
 					node = create_ast_node(context,[start_pos,match.end_pos],children)

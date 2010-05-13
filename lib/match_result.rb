@@ -2,7 +2,8 @@ module Grammy
 
 	class MatchResult
 		attr_reader :rule, :result, :ast_node
-		attr_accessor :start_pos, :end_pos, :backtracking
+		attr_accessor :start_pos, :end_pos
+		attr_writer :backtracking
 
 		# start_pos is the index of the first matched character
 		# end_pos is the index of the character that follows the last matched character
@@ -22,6 +23,7 @@ module Grammy
 			end_pos - start_pos
 		end
 
+		# An alternative rule has to check if a subrule disabled backtracking.
 		def backtracking?
 			@backtracking
 		end

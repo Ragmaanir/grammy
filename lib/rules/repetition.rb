@@ -32,7 +32,7 @@ module Grammy
 				debug_start(context)
 
 				while not failed and results.length < repetitions.max
-					skip(context) if skipping?
+					skip(context) if using_skipper?
 					match = @rule.match(context)
 
 					if match.success?
@@ -45,7 +45,7 @@ module Grammy
 				success = repetitions.include? results.length
 				end_pos = success ? context.position : start_pos
 
-				unless ignored?
+				if generating_ast?
 					children = results.map{|res| res.ast_node }.compact
 					node = create_ast_node(context,[start_pos,end_pos],children)
 				end

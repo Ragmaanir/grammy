@@ -17,7 +17,7 @@ module Grammy
 			def match(context)
 				debug_start(context)
 				success = false
-				skip(context) if skipping?
+				skip(context) if using_skipper?
 
 				end_pos = start_pos = context.position
 
@@ -30,7 +30,7 @@ module Grammy
 
 				end_pos = context.position
 
-				node = create_ast_node(context,[start_pos,end_pos]) if success and not ignored?
+				node = create_ast_node(context,[start_pos,end_pos]) if success and generating_ast?
 				
 				match = MatchResult.new(self,success,node,start_pos,end_pos)
 				debug_end(context,match)
