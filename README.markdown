@@ -14,11 +14,11 @@ Features
 - Skipping of characters: comments, whitespaces between words
 - Generation of an AST. Most unused tokens can be removed automatically.
 - AST can be written to an image file with help of graphviz.
+- Error handling: disable backtracking with the `&` operator and get simple syntax error reports
 
 Todo
 ----
 
-- Error handling: disable backtracking with the `&` operator
 - Subtraction: +('a'..'z') - 'reserved'
 - semantic actions
 - validation (rules which never match, left recursion)
@@ -171,7 +171,7 @@ Often you want to skip several parts of the grammar (e.g whitespaces or comments
 Thats what a skipper does:
 
 	g = Grammy.define :words do
-		skipper whitespacs: +' '
+		default_skipper whitespacs: +' '
 		start words: 'hello' >> 'world'
 	end
 
@@ -183,10 +183,26 @@ The skipper now skips whitespaces when parsing:
 You dont want to skip in every rule. Skippers are disabled when you declare the rule as `token`:
 
 	g = Grammy.define :words do
-		skipper whitespacs: +' '
+		default_skipper whitespacs: +' '
 		token word: +('a'..'z') # no skipping between the characters
 		start words: 'hello' >> 'world' >> :word
 	end
+
+You can use multiple skippers:
+
+	g = Grammy.define do
+		default_skipper a_skipper: ~'a'
+		skipper b_skipper: ~'b'
+
+		rule content: +'+', skipper: :b_skipper
+		start start: '{' >> :content >> '}'
+	end
+
+	g.should fully_match("aaa{aabb+bbbb+baa}")
+
+The default skipper is used by all rules (except tokens and fragments) by default.
+You can change the skipper from default to a custom one by passing the name of the skipper (`skipper: :b_skipper`) as
+extra parameter like in the example above.
 
 AST Generation
 --------------
@@ -232,7 +248,7 @@ to the errors array of the ParseResult returned by Grammar#parse.
 SyntaxErrors look like this when written to console:
 
 For:
-	g.parse!("aaabb").should have(1).errors
+	g.parse("aaabb").errors.first
 
 the output is:
 
@@ -240,12 +256,13 @@ the output is:
 	| in source 'unknown'
 	| in line 1 at column 4
 	| "aaabb"
+	| ----^
 	| Expected: 'bbb'
 	| In Rule: err_seq -> 'aaa' 'bbb'
 
 And for:
 
-	g.parse!("aaaBBB").should have(1).errors
+	g.parse("aaaBBB").errors.first
 
 the message is:
 
@@ -253,6 +270,7 @@ the message is:
 	| in source 'unknown'
 	| in line 1 at column 4
 	| "aaaBBB"
+	| ----^
 	| Expected: 'bbb'
 	| In Rule: err_seq -> 'aaa' 'bbb'
 
@@ -295,12 +313,39 @@ For very complex grammars you can do something like this:
 
 		yaml_specs.each do |spec|
 			it spec['name'] do
-				if not @grammar.parse(spec['code']).full_match?
+				result = @grammar.parse(spec['code'], debug: spec['debug'])
+				
+				if not result.full_match? or result.has_errors?
+					puts result.errors
+					result.tree.to_image(spec['name'].gsub(' ','_'))
 					raise RuntimeError, "failed"
-					# maybe supply File.dirname(__FILE__)+'/spec.yaml:#{line_number}'
+					# maybe supply File.dirname(__FILE__)+'/spec.yaml:#{line_number_here}'
 				end
 			end
 		end
 	end
 
-You basically define lots of valid example input in a yaml file an test if each of them is a full match.
+You basically define a lot of valid example input in a yaml file an test if each of example is matched.
+
+Also there are some custom rspec matchers in spec/support:
+
+	g.should fully_match("input1","input2",...)
+	g.should partially_match(...)
+	g.should not_match(...)
+
+Useful Things
+-------------
+
+- **`Rule#to_bnf`**
+
+	Is used to output a rule in BNF like syntax. This is also used in syntax error output.
+
+		rule hash_entry: (:HASH_SYM | :expression >> '=>') & :expression
+		[...]
+		g.rules[:hash_entry].to_bnf #=> hash_entry -> (HASH_SYM | expression '=>') expression
+
+- **`Hash#with_default`**
+
+	This assigns values to keys that are not assigned yet (this means the key is not present).
+
+		{a: nil, b: 5}.with_default(a: true, b: nil, c: 6) #=> {a: nil, b: 5, c: 6}

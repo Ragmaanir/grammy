@@ -60,17 +60,20 @@ describe Grammy::Rules::Sequence do
 
 		it "be using skipper" do
 			g = Grammy.define do
-				skipper whitespace: ' ' | "\n" | "\t"
+				default_skipper whitespace: ' ' | "\n" | "\t"
 
 				token a: 'ab'
 				start start: :a >> :a >> :a
 			end
 
-			g.skipper.should be_a Grammar::Alternatives
-			g.skipper.type.should == :skipper
+			g.default_skipper.should be_a Grammar::Alternatives
+			g.default_skipper.type.should == :skipper
 			
-			g.skipper.should_not be_generating_ast
+			g.default_skipper.should_not be_generating_ast
+
+			g.rules[:a].skipper.should == nil
 			g.rules[:a].should_not be_using_skipper
+			g.rules[:start].skipper.should == g.default_skipper
 			g.rules[:start].should be_using_skipper
 		end
 
@@ -119,7 +122,7 @@ describe Grammy::Rules::Sequence do
 
 		it "with sequence as skipper" do
 			g = Grammy.define do
-				skipper whitespace: ' ' >> ' '
+				default_skipper whitespace: ' ' >> ' '
 
 				token a: 'ab'
 				start start: :a >> :a >> :a
@@ -133,7 +136,7 @@ describe Grammy::Rules::Sequence do
 
 		it "with complex skipper" do
 			g = Grammy.define do
-				skipper whitespace: +(' ' | "\n" | "\t")
+				default_skipper whitespace: +(' ' | "\n" | "\t")
 
 				token a: 'ab'
 				start start: :a >> :a >> :a
@@ -180,7 +183,7 @@ describe Grammy::Rules::Sequence do
 
 		it "in sequence with repetition when backtracking not allowed" do
 			g = Grammy.define do
-				skipper ws: +(' ' | "\n" | "\t")
+				default_skipper ws: +(' ' | "\n" | "\t")
 				token word: ('a'..'z')*(3..10) #,debug: true
 				start string: +:word & eos
 			end

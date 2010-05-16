@@ -10,18 +10,12 @@ describe Grammy::Rules::RuleWrapper do
 				start char: :a
 			end
 
-			char = g.rules[:char]
-
-			char.should be_a Grammar::RuleWrapper
-			char.name.should == :char
-			char.rule.name.should == :a
-			char.rule.should == g.rules[:a]
-			char.should_not be_optional
-
-			#char.match("a",0).should be_success
-			#char.match("aa",0).should be_success
-			#char.match("",0).should be_failure
-			#char.match("b",0).should be_failure
+			g.rules[:char].should have_properties(
+				:name => :char,
+				:class => Grammar::RuleWrapper,
+				:rule => g.rules[:a],
+				:optional? => false
+			)
 		end
 
 		it "optional rule" do
@@ -30,18 +24,12 @@ describe Grammy::Rules::RuleWrapper do
 				start char: :a?
 			end
 
-			char = g.rules[:char]
-
-			char.should be_a Grammar::RuleWrapper
-			char.name.should == :char
-			char.rule.name.should == :a
-			char.rule.should == g.rules[:a]
-			char.should be_optional
-
-			#char.match("",0).should be_success
-			#char.match("a",0).should be_success
-			#char.match("aa",0).should be_success
-			#char.match("b",0).should be_success
+			g.rules[:char].should have_properties(
+				:name => :char,
+				:class => Grammar::RuleWrapper,
+				:rule => g.rules[:a],
+				:optional? => true
+			)
 		end
 	end
 

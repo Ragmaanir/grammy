@@ -14,6 +14,8 @@ class AST
 			options[:children].each{ |child| add_child(child) } if options[:children]
 		end
 
+		# TODO add parent
+
 		def range
 			[@start_pos,@end_pos]
 		end

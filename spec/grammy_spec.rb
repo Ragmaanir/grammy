@@ -59,6 +59,56 @@ describe Grammy do
 			phrase.children[1].rule.should == g.rules[:b]
 		end
 
+		it "should have multiple skippers" do
+			g = Grammy.define do
+				skipper a: 'a'
+				skipper b: 'b'
+			end
+
+			g.should have(2).skippers
+			g.default_skipper.should == nil
+		end
+
+		it "should use default skipper when provided" do
+			g = Grammy.define do
+				skipper a: 'a'
+				default_skipper default: ' '
+				skipper b: 'b'
+				
+				start s: 'test'
+			end
+			
+			g.default_skipper.should == g.rules[:default]
+			g.rules[:s].skipper.should == g.default_skipper
+		end
+
+		it "skippers should neither skip nor generate ast" do
+			g = Grammy.define do
+				skipper a: 'a'
+				default_skipper default: ' '
+				skipper b: 'b'
+
+				start s: 'test'
+			end
+
+			g.should have(3).skippers
+			g.skippers.each { |_,s|
+				s.should_not be_using_skipper
+				s.should_not be_generating_ast
+			}
+		end
+
+		it "should assign custom skipper to a rule" do
+			g = Grammy.define do
+				skipper a: 'a'
+				default_skipper default: ' '
+
+				start s: 'test', skipper: :a
+			end
+
+			g.rules[:s].skipper.should == g.skippers[:a]
+		end
+
 		it "grammar with duplicate rules and raise" do
 			expect{
 				Grammy.define do
@@ -78,15 +128,13 @@ describe Grammy do
 				start start: :item >> ~(',' >> :item)
 			end
 
-			g.parse("").should be_no_match
+			g.should not_match('')
 
-			[
+			g.should fully_match(
 				"first",
 				"first,second",
 				"first,second,third"
-			].each { |input|
-				g.parse(input).should be_full_match
-			}
+			)
 		end
 
 		it "comma seperated list with list-helper" do
@@ -95,15 +143,13 @@ describe Grammy do
 				start start: list(:item)
 			end
 
-			g.parse("").should be_no_match
+			g.should not_match('')
 
-			[
+			g.should fully_match(
 				"first",
 				"first,second",
 				"first,second,third"
-			].each { |input|
-				g.parse(input).should be_full_match
-			}
+			)
 		end
 
 		it "optional comma seperated list with list-helper" do
@@ -112,26 +158,36 @@ describe Grammy do
 				start start: list?(:item)
 			end
 
-			g.parse("").should be_full_match
-
-			[
+			g.should fully_match(
+				"",
 				"first",
 				"first,second",
 				"first,second,third"
-			].each { |input|
-				g.parse(input).should be_full_match
-			}
+			)
 		end
 
 		it "and only skip in rules" do
 			g = Grammy.define do
-				skipper whitespace: +(' ' | "\n" | "\t")
+				default_skipper whitespace: +(' ' | "\n" | "\t")
 
 				token a: 'ab d'
 				start start: +:a
 			end
 
-			g.parse("ab d\t\n ab d").should be_full_match
+			g.should fully_match("ab d\t\n ab d")
+		end
+
+		it "with specified skippers" do
+			g = Grammy.define do
+				default_skipper a_skipper: ~'a'
+				skipper b_skipper: ~'b'
+
+				rule content: +'+', skipper: :b_skipper
+				start start: '{' >> :content >> '}'
+			end
+
+			g.should fully_match("aaa{aabb+bbbb+baa}")
+			g.should not_match("aaa{aabb+abaa}")
 		end
 
 		it "should modify ast node" do

@@ -5,7 +5,7 @@ describe "CommonGrammars" do
 
 	it "should define parameter list" do
 		g = Grammy.define :param_list do
-			skipper ws: +' '
+			default_skipper ws: +' '
 			rule item: +('a'..'z')
 			start list: list(:item,',')
 		end
@@ -90,7 +90,7 @@ describe "CommonGrammars" do
 		pending "implement '-' operator" # TODO implement
 		
 		g = Grammy.define :quoted_string do
-			skipper ws: +' '
+			default_skipper ws: +' '
 
 			fragment letter: ('a'..'z') | ('A'..'Z') | ' '
 			fragment digit: '0'..'9'
@@ -111,7 +111,7 @@ describe "CommonGrammars" do
 
 	it "should define arithmetic expressions" do
 		g = Grammy.define :float do
-			skipper ws: +' '
+			default_skipper ws: +' '
 
 			token add: '+' | '-'
 			token mult: '*' | '/'

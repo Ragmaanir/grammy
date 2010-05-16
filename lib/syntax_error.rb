@@ -13,6 +13,7 @@ module Grammy
 			| in source '#{source}'
 			| in line #{line_number} at column #{column}
 			| #{line.inspect}
+			| #{'-'*column + '^'}
 			| Expected: #{failed_rule.to_bnf}
 			| In Rule: #{sequence.name} -> #{sequence.to_bnf}
 			EOERR

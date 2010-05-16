@@ -16,7 +16,7 @@ class Hash
 	def with_default(hash)
 		#hash.merge(self) # error: does not keep order
 		copy = dup
-		hash.each { |k,v| copy[k] = v unless copy[k]!=nil }
+		hash.each { |k,v| copy[k] = v unless copy.has_key?(k) }
 		copy
 	end
 

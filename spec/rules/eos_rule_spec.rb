@@ -34,7 +34,7 @@ describe Grammy::Rules::EOSRule do
 
 		it "only end of stream with skipper" do
 			g = Grammy.define do
-				skipper ws: +' '
+				default_skipper ws: +' '
 				start phrase: eos
 			end
 			
@@ -44,7 +44,7 @@ describe Grammy::Rules::EOSRule do
 
 		it "end of stream with skipper" do
 			g = Grammy.define do
-				skipper ws: +' '
+				default_skipper ws: +' '
 				start phrase: 'first' >> 'last' >> eos
 			end
 			

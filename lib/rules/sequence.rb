@@ -84,11 +84,9 @@ module Grammy
 
 			def to_bnf
 				@children.map{|item|
-					if item.is_a? Alternatives
-						"(#{item})"
-					else
-						item.to_bnf
-					end
+					bnf = item.to_bnf
+					bnf = "(#{bnf})" if item.is_a? Alternatives
+					bnf
 				}.join(" ")
 			end
 

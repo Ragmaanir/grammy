@@ -61,10 +61,12 @@ class Grammar
 		def rule(options)
 			name,defn = options.shift
 
+			raise "No name given for rule" unless name
+			raise "No definition given for rule #{name}" unless defn
+
 			options = options.with_default(
-				using_skipper: true,
+				skipper: default_skipper ? default_skipper.name : nil,
 				merging_nodes: false,
-				generating_ast: true,
 				debug: :all,
 				type: :rule
 			)
@@ -79,13 +81,30 @@ class Grammar
 			@rules[name] = rule
 		end
 
-		# no parameters passed => returns the skipper
-		# options passed => creates and registers a skipper
-		def skipper(options={})
+		def using_skippers?
+			skippers.any?
+		end
+
+		# returns the hash of all rules that are registered as a skipper
+		def skippers
+			@rules.select{ |_,rule| rule.type == :skipper }
+		end
+
+		# creates and registers a skipper
+		def skipper(options)
+			raise "Invalid definition for skipper" unless options and options.is_a?(Hash) and options.any?
+
+			rule(options.with_default(debug: :root_only).merge(skipper: nil, generating_ast: false, type: :skipper))
+		end
+
+		# no parameters passed => returns the default skipper
+		# options passed => creates and registers a default skipper
+		def default_skipper(options={})
 			if options == {}
-				@skipper
+				@default_skipper
 			else
-				@skipper = rule(options.with_default(debug: :root_only).merge(using_skipper: false, generating_ast: false, type: :skipper))
+				raise "Default skipper already set to: #{@default_skipper.name}" if @default_skipper
+				@default_skipper = skipper(options)
 			end
 		end
 
@@ -93,7 +112,7 @@ class Grammar
 		# - does not use skipper
 		# - merges nodes
 		def token(options)
-			rule(options.with_default(debug: :root_only).merge(using_skipper: false, merging_nodes: false, type: :token))
+			rule(options.with_default(debug: :root_only).merge(skipper: nil, merging_nodes: false, type: :token))
 		end
 
 		# generates no extra AST-node
@@ -104,7 +123,7 @@ class Grammar
 		# Create a rule which does not use a skipper and creates mergeable AST-nodes.
 		# This can be used to decompose a token into smaller fragments.
 		def fragment(options)
-			rule(options.with_default(debug: :none).merge(merging_nodes: true, using_skipper: false, type: :fragment))
+			rule(options.with_default(debug: :none).merge(merging_nodes: true, skipper: nil, type: :fragment))
 		end
 
 		def start(options)
@@ -121,7 +140,7 @@ class Grammar
 
 		def list?(*params)
 			name = "list_helper_#{params.first}".to_sym
-			rule(name => list(*params))
+			helper(name => list(*params))
 			RuleWrapper.new(name,optional: true)
 		end
 
@@ -221,7 +240,7 @@ class Grammar
 
 		if options[:debug]
 			puts result
-			result.tree.to_image('debug_'+@start_rule.name)
+			result.tree.to_image('DEBUG_'+rule.name)
 		end
 		result
 	end

@@ -11,7 +11,7 @@ module Grammy
 			include Operators
 
 			Callbacks = [:modify_ast,:on_error,:on_match]
-			Options = [:backtracking,:using_skipper,:merging_nodes,:generating_ast,:debug,:type,:times,:optional] + Callbacks
+			Options = [:backtracking,:skipper,:merging_nodes,:generating_ast,:debug,:type,:times,:optional] + Callbacks
 			DebugModes = [:like_root,:all,:root_only,:none]
 
 			attr_accessor :name, :parent
@@ -30,7 +30,6 @@ module Grammy
 
 				options = options.with_default(
 					backtracking: true,
-					using_skipper: false,
 					debug: :like_root,
 					type: :anonymous,
 					merging_nodes: true,
@@ -42,7 +41,7 @@ module Grammy
 				@merging_nodes = options.delete(:merging_nodes)
 				@generating_ast = options.delete(:generating_ast)
 				@backtracking = options.delete(:backtracking)
-				@using_skipper = options.delete(:using_skipper)
+				@skipper = options.delete(:skipper)
 				
 				@debug = options.delete(:debug)
 				@type = options.delete(:type)
@@ -51,6 +50,7 @@ module Grammy
 				raise "@merging_nodes was #{@merging_nodes.inspect}" unless [true,false].include? @merging_nodes
 				raise "invalid debug mode: #{@debug.inspect}" unless DebugModes.include? @debug
 				raise unless [true,false].include? @generating_ast
+				raise "invalid skipper: #{@skipper}" unless @skipper==nil or @skipper.is_a? Symbol
 			end
 
 			# The #root method returns the production that the rule is part of.
@@ -91,7 +91,7 @@ module Grammy
 			# TODO needed?
 			def type
 				result = @type || root.type
-				raise unless [:anonymous,:rule,:token,:fragment,:skipper].include? result
+				raise "invalid rule type: #{result}" unless [:helper,:anonymous,:rule,:token,:fragment,:skipper].include? result
 				result
 			end
 
@@ -112,7 +112,17 @@ module Grammy
 			end
 
 			def using_skipper?
-				grammar.skipper and (@using_skipper or (root.using_skipper? unless root==self))
+				#grammar.skipper and (@using_skipper or (root.using_skipper? unless root==self))
+
+				grammar.using_skippers? and skipper
+			end
+
+			def skipper
+				if root == self
+					grammar.skippers[@skipper]
+				else
+					root.skipper
+				end
 			end
 
 			def generating_ast?
@@ -145,7 +155,8 @@ module Grammy
 			end
 
 			def skip(context)
-				grammar.skipper.match(context)
+				#grammar.skipper.match(context)
+				skipper.match(context)
 			end
 
 			def match(context)

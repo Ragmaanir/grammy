@@ -50,7 +50,7 @@ describe Grammy::Rules::RangeRule do
 
 		it "letters with skipper" do
 			g = Grammy.define do
-				skipper ws: +' '
+				default_skipper ws: +' '
 				start lower: 'a'..'z'
 			end
 

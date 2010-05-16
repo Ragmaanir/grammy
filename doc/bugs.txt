@@ -4,10 +4,12 @@ Todo
 ==================================================
 
 ##   : BUGFIX: when skipper uses other rules => infinite recursion
-##   : WORKAROUND: '\n' != "\n"
+##   : WORKAROUND: '\n' = "\\n" != "\n"
 ##   : BUGFIX: token x: +:digit # with ws-skipper matches eg '33  ' and stores '33  ' in ast-node
 
 
 Done
 ==================================================
+#    : list? did create a named rule. change to a helper rule.
+#    : to_bnf did output to_s for alternatives in a sequence
 ##   : BUGFIX: :a? >> :a? >> 'b' #=> sequence adds one to the match range even when :a? does not read anything

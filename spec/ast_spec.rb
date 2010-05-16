@@ -117,7 +117,7 @@ describe "AST should" do
 
 	it "should parse sequence grammar with skipper and not create nodes for skipper" do
 		g = Grammy.define do
-			skipper whitespace: +(' ' | "\n" | "\t")
+			default_skipper whitespace: +(' ' | "\n" | "\t")
 
 			token a: 'ab'
 			start start: :a >> :a >> :a
@@ -134,7 +134,7 @@ describe "AST should" do
 
 	it "should parse sequence grammar with skipper and create nodes for tokens" do
 		g = Grammy.define do
-			skipper whitespace: +(' ' | "\n" | "\t")
+			default_skipper whitespace: +(' ' | "\n" | "\t")
 
 			token a: 'ab' | 'xy'
 			start start: :a >> :a >> :a
