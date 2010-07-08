@@ -1,4 +1,5 @@
 require 'grammar'
+require 'ast_walker'
 
 module Grammy
 

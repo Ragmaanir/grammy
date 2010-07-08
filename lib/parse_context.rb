@@ -4,15 +4,26 @@ require 'syntax_error'
 module Grammy
 
 	class ParseContext
-		attr_reader :grammar
+		attr_reader :grammar, :ast_module
 		attr_reader :stream, :errors, :source, :backtrack_border
 		attr_accessor :line_number, :position, :line_start
 
-		def initialize(grammar,source,stream)
+		def initialize(grammar,source,stream, options={})
 			@grammar, @stream, @errors = grammar, stream, []
 			@source = source || :unknown
 			@position = @line_start = @backtrack_border = 0
 			@line_number = 1
+			@ast_module = options[:ast_module]
+			
+			if @ast_module
+				tmp_module = @ast_module
+				
+				@ast_node_class = Class.new(AST::Node) do
+					include tmp_module
+				end
+			else
+				@ast_node_class = AST::Node
+			end
 		end
 
 		def position=(new_pos)
@@ -62,6 +73,10 @@ module Grammy
 		def add_error(sequence,failed_rule)
 			@errors << SyntaxError.new(source,line,line_number,column+1,sequence,failed_rule)
 			#@errors << SyntaxError.new(source,line,line_number,failure_pos - @line_start,sequence,failed_rule)
+		end
+		
+		def create_ast_node(*args)
+			@ast_node_class.new(*args)
 		end
 	end
 

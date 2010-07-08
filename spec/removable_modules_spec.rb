@@ -3,28 +3,50 @@ require 'spec/spec_helper'
 
 describe "RemovableModules" do
 
-	it "should add module" do
-		C = Class.new do
-			include Grammy::Rules::Operators
+	before do
+		@m = Module.new do
+			extend ExcludableModule
+			def mod_meth
+				:of_module
+			end
 		end
-
-		C.instance_methods.should include(:+@)
-		C.instance_methods.should include(:'>>')
-		C.instance_methods.should include(:'*')
+		
+		@c = Class.new do
+			def mod_meth
+				:of_class
+			end
+			
+			def cls_meth
+				:of_class
+			end
+		end
 	end
 
-	it "should add and remove module" do
-		C = Class.new do
-			include Grammy::Rules::Operators
-		end
-
-		Grammy::Rules::Operators.exclude(C)
-
-		C.instance_methods.should_not include(:+@)
-		C.instance_methods.should_not include(:'>>')
-		C.instance_methods.should_not include(:'*')
+	it "should include methods" do
+		@m.inject_into(@c)
+		
+		@c.instance_methods.should include(:mod_meth)
+		@c.new.mod_meth.should == :of_module
+	end
+	
+	it "should add exclude-method to target" do
+		@m.inject_into(@c)
+		@c.methods.should include(:exclude)
+	end
+	
+	it "should backup existing methods" do
+		@m.inject_into(@c)
+		@c.instance_methods.should include(:__backup_mod_meth)
 	end
 
-	it "should restore old methods"
+	it "should restore old methods" do
+		@m.inject_into(@c)
+		
+		@c.new.mod_meth.should == :of_module
+		
+		@m.remove_from(@c)
+		
+		@c.new.mod_meth.should == :of_class
+	end
 
 end

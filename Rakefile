@@ -11,14 +11,17 @@ spec = Gem::Specification.new do |s|
   s.name = 'Grammy'
   s.version = '0.0.7'
   s.has_rdoc = true
-  s.extra_rdoc_files = ['README']
+  s.extra_rdoc_files = ['README.markdown']
   s.summary = 'Grammy is a DSL to describe Grammars and gernerate LL Parsers'
   s.description = s.summary
   s.author = 'Ragmaanir'
   s.email = 'ragmaanir@gmail.com'
-	s.homepage = 'http://ragmaanir.mypresident.de'
+  s.homepage = 'http://ragmaanir.mypresident.de'
   s.files = %w(README Rakefile) + Dir.glob("{lib,spec}/**/*")
   s.require_path = "lib"
+  s.add_dependency('log4r', '>= 1.1.8')
+  s.add_dependency('rspec', '>= 1.3.0')
+  s.add_dependency('ruby-graphviz', '>= 0.9.12')
 end
 
 Rake::GemPackageTask.new(spec) do |p|
@@ -28,9 +31,9 @@ Rake::GemPackageTask.new(spec) do |p|
 end
 
 Rake::RDocTask.new do |rdoc|
-  files =['README', 'LICENSE', 'lib/**/*.rb']
+  files =['README.markdown', 'LICENSE', 'lib/**/*.rb']
   rdoc.rdoc_files.add(files)
-  rdoc.main = "README" # page to start on
+  rdoc.main = "README.markdown" # page to start on
   rdoc.title = "Grammy Docs"
   rdoc.rdoc_dir = 'doc/rdoc' # rdoc output folder
   rdoc.options << '--line-numbers'

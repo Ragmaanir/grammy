@@ -29,7 +29,7 @@ describe "CommonGrammars" do
 			helper letter: :lower | :upper
 			helper ident_start: :letter | '_';
 			helper ident_letter: :ident_start | ('0'..'9')
-			start ident: :ident_start >> (:ident_letter * (0..128))
+			start ident: :ident_start >> ~:ident_letter
 		end
 
 		g.parse("a").should be_full_match

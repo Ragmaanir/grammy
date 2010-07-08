@@ -40,16 +40,20 @@ class Grammar
 	def use_dsl(&block)
 		self.class.send(:include,DSL)
 
-		Symbol.send(:include,Operators)
-		String.send(:include,Operators)
-		Range.send(:include,Operators)
+		#Symbol.send(:include,Operators)
+		#String.send(:include,Operators)
+		#Range.send(:include,Operators)
+		#[Symbol,String,Range].each{|c| c.send(:include,Operators) }
+		[Symbol,String,Range].each{|c| Operators.inject_into(c) }
 
 		begin
 			yield
 		ensure
-			Operators.exclude(Symbol)
-			Operators.exclude(Range)
-			Operators.exclude(String)
+			#Operators.exclude(Symbol)
+			#Operators.exclude(Range)
+			#Operators.exclude(String)
+			#[Symbol,String,Range].each{|c| c.exclude(Operators) }
+			[Symbol,String,Range].each{|c| Operators.remove_from(c) }
 		end
 	end
 
@@ -132,8 +136,13 @@ class Grammar
 
 		def list(rule,sep=',',options={})
 			raise unless rule.is_a? Symbol
-			range = options[:range] || 0..1000
-			result = rule >> (sep >> rule)*range
+			#range = options[:range] || 0..1000
+			#result = rule >> (sep & rule)*range
+			if options[:range]
+				rule >> (sep & rule)*options[:range]
+			else
+				result = rule >> ~(sep & rule)
+			end
 			# TODO store AST nodes in a list?
 			result
 		end
@@ -212,6 +221,7 @@ class Grammar
 	# options:
 	# - rule: the name(symbol) of the rule to start parsing with, default is the start rule
 	# - debug: true for extra debug output, default is false
+	# - ast_module: module that will extend all AST-Nodes
 	def parse(stream,options={})
 		raise("no start rule supplied") unless @start_rule || options[:rule]
 		rule = @start_rule
@@ -220,7 +230,7 @@ class Grammar
 
 		logger.debug("##### Parsing(#{options[:rule]}): #{stream.inspect}")
 
-		context = Grammy::ParseContext.new(self,nil,stream)
+		context = Grammy::ParseContext.new(self,nil,stream,options.only(:ast_module))
 
 		begin
 			match = rule.match(context)

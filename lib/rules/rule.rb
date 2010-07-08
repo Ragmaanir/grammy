@@ -8,7 +8,8 @@ module Grammy
 		# RULE
 		#
 		class Rule
-			include Operators
+			#include Operators
+			Operators.inject_into(self)
 
 			Callbacks = [:modify_ast,:on_error,:on_match]
 			Options = [:backtracking,:skipper,:merging_nodes,:generating_ast,:debug,:type,:times,:optional] + Callbacks
@@ -142,7 +143,13 @@ module Grammy
 			end
 
 			def create_ast_node(context,range,children=[])
-				node = AST::Node.new(name, merge: merging_nodes?, range: range, stream: context.stream, children: children)
+				#node = AST::Node.new(name, merge: merging_nodes?, range: range, stream: context.stream, children: children)
+				node = context.create_ast_node(name, 
+					merge: merging_nodes?, 
+					range: range, 
+					stream: context.stream, 
+					children: children)
+				
 				modify_node(node)
 			end
 

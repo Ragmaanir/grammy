@@ -1,4 +1,4 @@
-class AST
+module AST
 
 	class Node
 		attr_reader :name, :range, :start_pos, :end_pos, :children, :stream
