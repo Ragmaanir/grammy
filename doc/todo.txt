@@ -1,19 +1,27 @@
 
 Todo
 ==================================================
-#    : idea: replace symbols with method calls in the DSL
+###  : skipper s: ..., :only => [...], :except => [...]
+#### : idea: replace symbols with method calls in the DSL
 		rule x => +letter >> '.'
-		move helper methods into a module/class and acces them like this:
-		rule args: Helper.list(arg)
+?    : move helper methods into a module/class and acces them like this:
+		rule args => Helper.list(arg)
 ###  : On SyntaxError insert an error node in the AST tree
 ##   : Predicates: Positive and Negative Lookahead (read without consuming)
+		negative: !x, -x
+		positive:
+			[x]
+			x!
+			look(x)
+			x.look!
+			
 ###  : ParseContext: LineNumber calculation: precalculate indices of linebreaks
-#    : Maybe use Aquarium for logging with AOP. Or for less dependencies: Rule#match does logging, Rule#match_impl does the real matching
-###  : Let multiple rules with same name define alternatives: rule a: 'x'; rule a: 'y'; #=> == rule a: 'x' | 'y'
+###  : Let multiple rules with same name define alternatives(rule a => 'x' | 'y'): 
+		rule a => 'x'
+		rule a => 'y'
 ###  : Error report, hooks and skipping incorrect tokens
 ###  : list(:rule) ast transformation: :rule >> ~(',' >> :rule) #=> array of ast nodes
 ##   : transformations: rule x: +:digit, map: ->(node){ Integer(node.data) }
-#    : AST Node naming & reordering: use '^', '<=>' ?
 ##   : support Regexp as rules
 ###  : GrammySpec: SpecFramework for grammars: expectations for acceptance and generated AST
 		- yaml file with match expectations: full/partial/no match
@@ -22,7 +30,7 @@ Todo
 		- check for left recursion
 		- check for never matching rules: ~a >> a (BNF: a* a) #=> never matches, (:a? | :b?) #=> always matches first
 		- nested token rules?
-#    : Make constants accessible in grammar definition dsl
+
 #    : support exceptions: x: ('a'..'z')*3 - 'lol'
 ##   : give tokens a name/id for ast tree: :ident.name, :ident[:name]
 #    : Make predefined parsers available (skippers,comments,...): use :string, :int, :float
@@ -30,11 +38,16 @@ Todo
 #    : Analyze grammar: potential ambiguities etc; style tips: +:asd? => ~:asd
 ##   : Skipper before and after token? only in sequence?
 #    : nice to have: 1..9 instead of '1'..'9'
+###  : Match anything: :a >> ~any >> :b
 ?    : optional rules: :a >> [(',' >> :a)+] # change [x,y] => alternative?, [x] => optional
 #    : Use ruby-graphviz to output the Grammar: grammar.to_image('grammar')
-###  : Match anything: :a >> ~any >> :b
-#    : Skipper class which wraps a rule
 #    : grammar.to_s #=> list rules and skippers
+
+#    : Make constants accessible in grammar definition dsl
+#    : Skipper class which wraps a rule
+#    : AST Node naming & reordering: use '^', '<=>' ?
+#    : Maybe use Aquarium for logging with AOP. Or for less dependencies: 
+		Rule#match does logging, Rule#match_impl does the real matching
 
 
 Done

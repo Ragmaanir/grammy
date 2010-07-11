@@ -113,4 +113,8 @@ p B.new.conflict_meth
 #B.class_eval do
 #	alias_method :conflict_meth, :__backup_conflict_meth
 #end
-
+p(
+[1]
+.
+class
+)
