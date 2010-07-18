@@ -6,8 +6,8 @@ describe Grammy::Rules::RuleWrapper do
 	describe "should define" do
 		it "non-optional rule" do
 			g = Grammy.define do
-				rule a: 'a'
-				start char: :a
+				rule a => 'a'
+				start char => a
 			end
 
 			g.rules[:char].should have_properties(
@@ -20,8 +20,8 @@ describe Grammy::Rules::RuleWrapper do
 
 		it "optional rule" do
 			g = Grammy.define do
-				rule a: 'a'
-				start char: :a?
+				rule a => 'a'
+				start char => a?
 			end
 
 			g.rules[:char].should have_properties(
@@ -36,8 +36,8 @@ describe Grammy::Rules::RuleWrapper do
 	describe "should accept" do
 		it "string with optional rule" do
 			g = Grammy.define do
-				rule a: 'a'
-				start char: :a?
+				rule a => 'a'
+				start char => a?
 			end
 			
 			g.should fully_match('','a')
@@ -46,8 +46,8 @@ describe Grammy::Rules::RuleWrapper do
 
 		it "sequence of optional rules" do
 			g = Grammy.define do
-				rule a: 'a'
-				start char: :a? >> :a? >> 'b'
+				rule a => 'a'
+				start char => a? >> a? >> 'b'
 			end
 			
 			g.should fully_match('aab','ab','b')
@@ -59,8 +59,8 @@ describe Grammy::Rules::RuleWrapper do
 	describe "should" do
 		it "not generate ast-node when optional rule skipped" do
 			g = Grammy.define do
-				rule a: 'a'
-				start char: '<' >> :a? >> '>'
+				rule a => 'a'
+				start char => '<' >> a? >> '>'
 			end
 
 			g.parse("<>").tree.should have(0).children
@@ -68,9 +68,9 @@ describe Grammy::Rules::RuleWrapper do
 
 		it "not generate ast-node with wrapper rules when optional rule skipped" do
 			g = Grammy.define do
-				rule a: 'a' >> 'b'
-				rule x: 'x'
-				start char: :x >> :a? >> :x
+				rule a => 'a' >> 'b'
+				rule x => 'x'
+				start char => x >> a? >> x
 			end
 
 			g.parse("xx").tree.should have(2).children
@@ -78,8 +78,8 @@ describe Grammy::Rules::RuleWrapper do
 
 		it "generate ast-node when optional rule not skipped" do
 			g = Grammy.define do
-				rule a: 'a'
-				start char: '<' >> :a? >> '>'
+				rule a => 'a'
+				start char => '<' >> a? >> '>'
 			end
 
 			g.parse("<a>").tree.should have(1).children

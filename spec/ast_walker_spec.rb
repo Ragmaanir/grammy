@@ -5,10 +5,10 @@ describe "AST Walker should" do
 
 	before do
 		g = Grammy.define do
-			default_skipper :skip => ~' '
+			default_skipper skip => ~' '
 		
-			token :word => +('a'..'z')
-			start :sent => +:word >> '.'
+			token word => +('a'..'z')
+			start sent => +word >> '.'
 		end
 		
 		str = "firstword anotherword lastword."
@@ -52,15 +52,15 @@ describe "AST Walker should" do
 	
 	it "walk down AST and use after-action" do
 		g = Grammy.define do
-			default_skipper :skip => ~' '
+			default_skipper skip => ~' '
 		
-			token :bool_const => 'true' | 'false'
-			token :int => ('1'..'9') >> ~('0'..'9')
-			token :string => '"' & ~('a'..'z') & '"'
+			token bool_const => 'true' | 'false'
+			token int => ('1'..'9') >> ~('0'..'9')
+			token string => '"' & ~('a'..'z') & '"'
 			
-			rule :stat => :bool_const | :int | :string
+			rule stat => bool_const | int | string
 			
-			start :if_statement => 'if' & :bool_const & 'then' & :stat & 'else' & :stat & eos
+			start if_statement => 'if' & bool_const & 'then' & stat & 'else' & stat & eos
 		end
 		
 		str = %q{ if true then 1 else "asd" }

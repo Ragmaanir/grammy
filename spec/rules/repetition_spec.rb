@@ -6,8 +6,8 @@ describe Grammy::Rules::Repetition do
 	describe "should define grammar" do
 		it "with repetition via range" do
 			g = Grammy.define do
-				rule a: 'a'
-				start as: :a*(3..77)
+				rule a => 'a'
+				start as => a*(3..77)
 			end
 
 			as = g.rules[:as]
@@ -19,8 +19,8 @@ describe Grammy::Rules::Repetition do
 
 		it "with constant repetition" do
 			g = Grammy.define do
-				rule a: 'a'
-				start const: :a*3
+				rule a => 'a'
+				start const => a*3
 			end
 
 			const = g.rules[:const]
@@ -32,7 +32,7 @@ describe Grammy::Rules::Repetition do
 
 		it "with one or more repetitions for unary +" do
 			g = Grammy.define do
-				start plus: +'a'
+				start plus => +'a'
 			end
 
 			plus = g.rules[:plus]
@@ -44,7 +44,7 @@ describe Grammy::Rules::Repetition do
 
 		it "with zero or more repetitions for unary ~" do
 			g = Grammy.define do
-				start any: ~'a'
+				start any => ~'a'
 			end
 
 			any = g.rules[:any]
@@ -59,8 +59,8 @@ describe Grammy::Rules::Repetition do
 	describe "should accept" do
 		it "string with constant repetition" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				start string: :lower * 4
+				helper lower => 'a'..'z'
+				start string => lower * 4
 			end
 
 			g.should fully_match('abcc','aaaa','cccc','acac','bbbb')
@@ -72,8 +72,8 @@ describe Grammy::Rules::Repetition do
 
 		it "zero or more characters" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				start string: ~:lower
+				helper lower => 'a'..'z'
+				start string => ~lower
 			end
 
 			g.should fully_match("","s","somelongerstring")
@@ -82,8 +82,8 @@ describe Grammy::Rules::Repetition do
 
 		it "one or more characters" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				start string: +:lower
+				helper lower => 'a'..'z'
+				start string => +lower
 			end
 
 			g.should fully_match("a","somelongerstring")
@@ -95,8 +95,8 @@ describe Grammy::Rules::Repetition do
 
 		it "repetition defined via range" do
 			g = Grammy.define do
-				rule string: 'abc' | '1234'
-				start start: :string * (1..3)
+				rule string => 'abc' | '1234'
+				start start_rule => string * (1..3)
 			end
 			
 			g.should fully_match("1234abc","abcabcabc","12341234","1234")

@@ -5,9 +5,9 @@ describe "CommonGrammars" do
 
 	it "should define parameter list" do
 		g = Grammy.define :param_list do
-			default_skipper ws: +' '
-			rule item: +('a'..'z')
-			start list: list(:item,',')
+			default_skipper ws => +' '
+			rule item => +('a'..'z')
+			start item_list => list(item,',')
 		end
 
 		g.parse("a, b, c").should be_full_match
@@ -24,12 +24,12 @@ describe "CommonGrammars" do
 
 	it "should define identifier" do
 		g = Grammy.define :identifier do
-			helper lower: 'a'..'z'
-			helper upper: 'A'..'Z'
-			helper letter: :lower | :upper
-			helper ident_start: :letter | '_';
-			helper ident_letter: :ident_start | ('0'..'9')
-			start ident: :ident_start >> ~:ident_letter
+			helper lower => 'a'..'z'
+			helper upper => 'A'..'Z'
+			helper letter => lower | upper
+			helper ident_start => letter | '_';
+			helper ident_letter => ident_start | ('0'..'9')
+			start ident => ident_start >> ~ident_letter
 		end
 
 		g.parse("a").should be_full_match
@@ -47,9 +47,9 @@ describe "CommonGrammars" do
 
 	it "should define integer" do
 		g = Grammy.define :int do
-			helper digit: '0'..'9'
-			helper nonzero: '1'..'9'
-			start int: '0' | :nonzero >> ~:digit
+			helper digit => '0'..'9'
+			helper nonzero => '1'..'9'
+			start int => '0' | nonzero >> ~digit
 		end
 
 		g.parse("12345678990").should be_full_match
@@ -63,11 +63,11 @@ describe "CommonGrammars" do
 
 	it "should define float" do
 		g = Grammy.define :float do
-			token sign: '+' | '-'
-			helper digit: '0'..'9'
-			helper nonzero: '1'..'9'
-			helper places: '.' >> +:digit
-			start float: :sign? >> ('0' | :nonzero >> ~:digit) >> :places?
+			token sign => '+' | '-'
+			helper digit => '0'..'9'
+			helper nonzero => '1'..'9'
+			helper places => '.' >> +digit
+			start float => sign? >> ('0' | nonzero >> ~digit) >> places?
 		end
 
 		g.parse("0.0").should be_full_match
@@ -90,13 +90,13 @@ describe "CommonGrammars" do
 		pending "implement '-' operator" # TODO implement
 		
 		g = Grammy.define :quoted_string do
-			default_skipper ws: +' '
+			default_skipper ws => +' '
 
-			fragment letter: ('a'..'z') | ('A'..'Z') | ' '
-			fragment digit: '0'..'9'
+			fragment letter => ('a'..'z') | ('A'..'Z') | ' '
+			fragment digit => '0'..'9'
 
-			token string: '"' >> +(:letter | :digit) >> '"'
-			start quoted_string: :string >> eos
+			token string => '"' >> +(letter | digit) >> '"'
+			start quoted_string => string >> eos
 		end
 
 		g.parse(' " some text here" ').should be_full_match
@@ -111,22 +111,22 @@ describe "CommonGrammars" do
 
 	it "should define arithmetic expressions" do
 		g = Grammy.define :float do
-			default_skipper ws: +' '
+			default_skipper ws => +' '
 
-			token add: '+' | '-'
-			token mult: '*' | '/'
+			token add => '+' | '-'
+			token mult => '*' | '/'
 
-			fragment digit: '0'..'9'
-			fragment nonzero: '1'..'9'
-			token int: '0' | :nonzero >> ~:digit
+			fragment digit => '0'..'9'
+			fragment nonzero => '1'..'9'
+			token int => '0' | nonzero >> ~digit
 
-			rule lit: :int
-			token var: +('a'..'z')
-			rule unary_exp: :var | :lit
-			rule add_exp: :unary_exp >> ~(:add >> :unary_exp)
-			rule mult_exp: :add_exp >> ~(:mult >> :add_exp)
+			rule lit => int
+			token var => +('a'..'z')
+			rule unary_exp => var | lit
+			rule add_exp => unary_exp >> ~(add >> unary_exp)
+			rule mult_exp => add_exp >> ~(mult >> add_exp)
 
-			start expression: :mult_exp
+			start expression => mult_exp
 		end
 
 		g.parse("5").should be_full_match
@@ -143,7 +143,7 @@ describe "CommonGrammars" do
 
 	it "should parse all valid bit strings" do
 		g = Grammy.define :bit_strings do
-			start start: ('0' | '1') * (1..3)
+			start start_rule => ('0' | '1') * (1..3)
 		end
 
 		(0..7).each { |i|

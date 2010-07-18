@@ -7,8 +7,8 @@ describe Grammy::Rules::Rule do
 
 		it "disable debug output for skipper" do
 			g = Grammy.define do
-				skipper ws: +' '
-				start letters: +('a'..'z')
+				skipper ws => +' '
+				start letters => +('a'..'z')
 			end
 
 			g.rules[:ws].debug.should == :root_only
@@ -19,9 +19,9 @@ describe Grammy::Rules::Rule do
 
 		it "disable debug output for subrules of tokens" do
 			g = Grammy.define do
-				skipper ws: +' '
-				token letter: 'a'..'z'
-				start letters: +:letter
+				skipper ws => +' '
+				token letter => 'a'..'z'
+				start letters => +letter
 			end
 
 			g.rules[:letter].should be_debugging
@@ -29,10 +29,10 @@ describe Grammy::Rules::Rule do
 
 		it "disable debug output for fragments" do
 			g = Grammy.define do
-				skipper ws: +' '
-				fragment letter: 'a'..'z'
-				token word: +:letter
-				start sentence: +:word
+				skipper ws => +' '
+				fragment letter => 'a'..'z'
+				token word => +letter
+				start sentence => +word
 			end
 
 			g.rules[:letter].should_not be_debugging
@@ -42,7 +42,7 @@ describe Grammy::Rules::Rule do
 
 		it "enable debug output for named rules" do
 			g = Grammy.define do
-				start letters: +('a'..'z')
+				start letters => +('a'..'z')
 			end
 
 			g.rules[:letters].should be_debugging
@@ -51,7 +51,7 @@ describe Grammy::Rules::Rule do
 
 		it "enable debug output for named rules and their subrules" do
 			g = Grammy.define do
-				start seq: 'abc' >> ~('a' | 'c')
+				start seq => 'abc' >> ~('a' | 'c')
 			end
 
 			g.rules[:seq].should be_debugging
@@ -68,8 +68,8 @@ describe Grammy::Rules::Rule do
 
 	it "should be able to enable debug for skipper" do
 		g = Grammy.define do
-			skipper ws: +' ', debug: :root_only
-			start letters: +('a'..'z')
+			skipper ws => +' ', debug: :root_only
+			start letters => +('a'..'z')
 		end
 
 		g.rules[:ws].should be_debugging

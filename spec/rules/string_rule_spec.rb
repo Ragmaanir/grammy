@@ -6,7 +6,7 @@ describe Grammy::Rules::StringRule do
 	describe "should define grammar" do
 		it "with string rule" do
 			g = Grammy.define do
-				start str: 'long_string'
+				start str => 'long_string'
 			end
 
 			g.rules[:str].should be_a Grammar::StringRule
@@ -17,7 +17,7 @@ describe Grammy::Rules::StringRule do
 	describe "should accept" do
 		it "a string" do
 			g = Grammy.define do
-				start str: 'long_string'
+				start str => 'long_string'
 			end
 			
 			g.should fully_match("long_string")
@@ -27,12 +27,12 @@ describe Grammy::Rules::StringRule do
 
 		it "a string with skipper but should not skip" do
 			g = Grammy.define do
-				skipper ws: +' '
-				start str: 'long_string'
+				skipper ws => +' '
+				start str => 'long_string'
 			end
 			
 			g.should fully_match("long_string")
-			g.should partially_match("long_stringX", "long_string ")
+			g.should partially_match("long_stringX", "long_string ","long_stringggg")
 			g.should not_match(
 				"long_strin",
 				"Xlong_string",

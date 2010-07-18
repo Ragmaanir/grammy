@@ -6,7 +6,7 @@ describe Grammy::Rules::Alternatives do
 	describe "should define grammar" do
 		it "with alternatives via '|' operator" do
 			g = Grammy.define do
-				rule lower: 'a' | 'b' | 'c'
+				rule lower => 'a' | 'b' | 'c'
 			end
 
 			g.rules[:lower].should be_a Grammar::Alternatives
@@ -16,7 +16,7 @@ describe Grammy::Rules::Alternatives do
 
 		it "with alternative rule via array" do
 			g = Grammy.define do
-				rule a_or_g: ['a','g']
+				rule a_or_g => ['a','g']
 			end
 
 			a_or_g = g.rules[:a_or_g]
@@ -28,9 +28,9 @@ describe Grammy::Rules::Alternatives do
 
 		it "with alternative rule via symbols" do
 			g = Grammy.define do
-				rule a: 'a'
-				rule b: 'b'
-				rule a_or_b: :a | :b
+				rule a => 'a'
+				rule b => 'b'
+				rule a_or_b => a | b
 			end
 
 			g.rules[:a_or_b].should be_a Grammar::Alternatives
@@ -43,7 +43,7 @@ describe Grammy::Rules::Alternatives do
 	describe "should accept" do
 		it "with alternatives via '|' operator" do
 			g = Grammy.define do
-				start lower: 'a' | 'b' | 'c'
+				start lower => 'a' | 'b' | 'c'
 			end
 			
 			g.should fully_match("a","b","c")
@@ -53,7 +53,7 @@ describe Grammy::Rules::Alternatives do
 
 		it "with alternative rule via array" do
 			g = Grammy.define do
-				start a_or_g: ['a','g']
+				start a_or_g => ['a','g']
 			end
 
 			g.should fully_match("a","g")

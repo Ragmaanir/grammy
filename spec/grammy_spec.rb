@@ -16,8 +16,8 @@ describe Grammy do
 
 		it "grammar with list-helper" do
 			g = Grammy.define do
-				rule item: ('a'..'z')*(2..8)
-				start phrase: list(:item)
+				rule item => ('a'..'z')*(2..8)
+				start phrase => list(:item)
 			end
 
 			phrase = g.rules[:phrase]
@@ -41,9 +41,9 @@ describe Grammy do
 
 		it "grammar with helper rule" do
 			g = Grammy.define do
-				helper a: 'a'
-				rule b: 'b'
-				rule phrase: :a >> :b
+				helper a => 'a'
+				rule b => 'b'
+				rule phrase => a >> b
 			end
 
 			phrase = g.rules[:phrase]
@@ -61,8 +61,8 @@ describe Grammy do
 
 		it "should have multiple skippers" do
 			g = Grammy.define do
-				skipper a: 'a'
-				skipper b: 'b'
+				skipper a => 'a'
+				skipper b => 'b'
 			end
 
 			g.should have(2).skippers
@@ -71,9 +71,9 @@ describe Grammy do
 
 		it "should use default skipper when provided" do
 			g = Grammy.define do
-				skipper a: 'a'
-				default_skipper default: ' '
-				skipper b: 'b'
+				skipper a => 'a'
+				default_skipper default => ' '
+				skipper b => 'b'
 				
 				start s: 'test'
 			end
@@ -84,11 +84,11 @@ describe Grammy do
 
 		it "skippers should neither skip nor generate ast" do
 			g = Grammy.define do
-				skipper a: 'a'
+				skipper a => 'a'
 				default_skipper default: ' '
-				skipper b: 'b'
+				skipper b => 'b'
 
-				start s: 'test'
+				start s => 'test'
 			end
 
 			g.should have(3).skippers
@@ -100,10 +100,10 @@ describe Grammy do
 
 		it "should assign custom skipper to a rule" do
 			g = Grammy.define do
-				skipper a: 'a'
-				default_skipper default: ' '
+				skipper a => 'a'
+				default_skipper default => ' '
 
-				start s: 'test', skipper: :a
+				start s => 'test', skipper: :a
 			end
 
 			g.rules[:s].skipper.should == g.skippers[:a]
@@ -112,8 +112,8 @@ describe Grammy do
 		it "grammar with duplicate rules and raise" do
 			expect{
 				Grammy.define do
-					rule a: 'a'
-					rule a: 'b'
+					rule a => 'a'
+					rule a => 'b'
 				end
 			}.to raise_error
 		end
@@ -124,8 +124,8 @@ describe Grammy do
 
 		it "comma seperated list" do
 			g = Grammy.define do
-				rule item: ('a'..'z')*(2..8)
-				start start: :item >> ~(',' >> :item)
+				rule item => ('a'..'z')*(2..8)
+				start start_rule => item >> ~(',' >> item)
 			end
 
 			g.should not_match('')
@@ -139,8 +139,8 @@ describe Grammy do
 
 		it "comma seperated list with list-helper" do
 			g = Grammy.define do
-				rule item: ('a'..'z')*(2..8)
-				start start: list(:item)
+				rule item => ('a'..'z')*(2..8)
+				start start_rule => list(item)
 			end
 
 			g.should not_match('')
@@ -154,8 +154,8 @@ describe Grammy do
 
 		it "optional comma seperated list with list-helper" do
 			g = Grammy.define do
-				rule item: ('a'..'z')*(2..8)
-				start start: list?(:item)
+				rule item => ('a'..'z')*(2..8)
+				start start_rule => list?(item)
 			end
 
 			g.should fully_match(
@@ -168,10 +168,10 @@ describe Grammy do
 
 		it "and only skip in rules" do
 			g = Grammy.define do
-				default_skipper whitespace: +(' ' | "\n" | "\t")
+				default_skipper whitespace => +(' ' | "\n" | "\t")
 
-				token a: 'ab d'
-				start start: +:a
+				token a => 'ab d'
+				start start_rule => +a
 			end
 
 			g.should fully_match("ab d\t\n ab d")
@@ -179,11 +179,11 @@ describe Grammy do
 
 		it "with specified skippers" do
 			g = Grammy.define do
-				default_skipper a_skipper: ~'a'
-				skipper b_skipper: ~'b'
+				default_skipper a_skipper => ~'a'
+				skipper b_skipper => ~'b'
 
-				rule content: +'+', skipper: :b_skipper
-				start start: '{' >> :content >> '}'
+				rule content => +'+', skipper: :b_skipper
+				start start_rule => '{' >> content >> '}'
 			end
 
 			g.should fully_match("aaa{aabb+bbbb+baa}")
@@ -192,10 +192,10 @@ describe Grammy do
 
 		it "should modify ast node" do
 			g = Grammy.define do
-				rule a: 'abc'
-				rule b: :a | 'fail' , modify_ast: lambda{|node| node.children.first }
-				rule c: :b | 'fail' , modify_ast: lambda{|node| node.children.first }
-				start start: :c | 'fail'
+				rule a => 'abc'
+				rule b => a | 'fail' , modify_ast: lambda{|node| node.children.first }
+				rule c => b | 'fail' , modify_ast: lambda{|node| node.children.first }
+				start start_rule => c | 'fail'
 			end
 
 			ast = g.parse('abc').tree

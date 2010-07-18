@@ -156,6 +156,10 @@ class Grammar
 		def eos
 			EOSRule.new
 		end
+		
+		def method_missing(meth,*args)
+			meth
+		end
 
 	end
 

@@ -50,7 +50,8 @@ module Grammy
 			end
 
 			def to_s
-				":#{name}#{optional? ? '?' : ''}"
+				#":#{name}#{optional? ? '?' : ''}"
+				to_bnf
 			end
 
 			def to_bnf

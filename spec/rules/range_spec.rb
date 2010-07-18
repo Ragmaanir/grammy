@@ -6,7 +6,7 @@ describe Grammy::Rules::RangeRule do
 	describe "should define" do
 		it "range from a to z" do
 			g = Grammy.define do
-				start lower: 'a'..'z'
+				start lower => 'a'..'z'
 			end
 
 			g.rules[:lower].should have_properties(
@@ -17,7 +17,7 @@ describe Grammy::Rules::RangeRule do
 
 		it "range from 1 to 9" do
 			g = Grammy.define do
-				start digit: '1'..'9'
+				start digit => '1'..'9'
 			end
 
 			g.rules[:digit].should have_properties(
@@ -30,7 +30,7 @@ describe Grammy::Rules::RangeRule do
 	describe "should accept" do
 		it "letters" do
 			g = Grammy.define do
-				start lower: 'a'..'z'
+				start lower => 'a'..'z'
 			end
 
 			g.should fully_match("a")
@@ -40,7 +40,7 @@ describe Grammy::Rules::RangeRule do
 
 		it "digits" do
 			g = Grammy.define do
-				start lower: '0'..'9'
+				start lower => '0'..'9'
 			end
 
 			g.should fully_match('1')
@@ -50,8 +50,8 @@ describe Grammy::Rules::RangeRule do
 
 		it "letters with skipper" do
 			g = Grammy.define do
-				default_skipper ws: +' '
-				start lower: 'a'..'z'
+				default_skipper ws => +' '
+				start lower => 'a'..'z'
 			end
 
 			g.should fully_match('  a')

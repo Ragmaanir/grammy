@@ -5,7 +5,7 @@ describe Grammy::Rules::EOSRule do
 
 	it "should define grammar with eos rule" do
 		g = Grammy.define do
-			start phrase: 'first' >> 'last' >> eos
+			start phrase => 'first' >> 'last' >> eos
 		end
 
 		g.rules[:phrase].should have(3).children
@@ -16,7 +16,7 @@ describe Grammy::Rules::EOSRule do
 
 		it "only end of stream" do
 			g = Grammy.define do
-				start phrase: eos
+				start phrase => eos
 			end
 
 			g.should fully_match('')
@@ -25,7 +25,7 @@ describe Grammy::Rules::EOSRule do
 
 		it "end of stream" do
 			g = Grammy.define do
-				start phrase: 'first' >> 'last' >> eos
+				start phrase => 'first' >> 'last' >> eos
 			end
 			
 			g.should fully_match("firstlast")
@@ -34,8 +34,8 @@ describe Grammy::Rules::EOSRule do
 
 		it "only end of stream with skipper" do
 			g = Grammy.define do
-				default_skipper ws: +' '
-				start phrase: eos
+				default_skipper ws => +' '
+				start phrase => eos
 			end
 			
 			g.should fully_match(""," ","     ")
@@ -44,8 +44,8 @@ describe Grammy::Rules::EOSRule do
 
 		it "end of stream with skipper" do
 			g = Grammy.define do
-				default_skipper ws: +' '
-				start phrase: 'first' >> 'last' >> eos
+				default_skipper ws => +' '
+				start phrase => 'first' >> 'last' >> eos
 			end
 			
 			g.should fully_match("firstlast","first   last  ")
