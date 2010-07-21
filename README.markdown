@@ -4,7 +4,8 @@ Grammy
 Description
 -----------
 Grammy is a DSL that generates recursive descent parsers. The DSL is inspired by
-the boost::spirit parser framework for c++.
+the boost::spirit parser framework for c++. I try to keep the DSL as close 
+as possible to EBNF syntax but add several parsing-features to it. 
 
 Features
 --------
@@ -15,6 +16,12 @@ Features
 - Generation of an AST. Most unused tokens can be removed automatically.
 - AST can be written to an image file with help of graphviz.
 - Error handling: disable backtracking with the `&` operator and get simple syntax error reports
+
+Recent Changes
+--------------
+- rules now dont need to be symbols. They are implemented via method_missing 
+	returning the method name as symbol. This is closer to BNF. Also later on 
+	parameters might be passed: `rule x(param1) => other_rule(param2) >> '.'`
 
 Todo
 ----
@@ -27,15 +34,22 @@ Todo
 Define a grammar
 ----------------
 
+### Empty Grammar
+All grammars in Grammy are defined inside a define-block:
+
+	g = Grammy.define :optional_name do
+		# rules here
+	end
+
 ### Sequences
 The following BNF grammar:
 
-	<token> ::= 'test' 'other'
+	<myrule> ::= 'test' 'other'
 
 can be defined in grammy like this:
 
-	g = Grammy.define :simple do
-		rule token: 'test' >> 'other'
+	g = Grammy.define do
+		rule myrule => 'test' >> 'other'
 	end
 
 The `>>` is the sequence operator which indicates that the string `'test'`
@@ -49,14 +63,14 @@ The BNF grammar:
 
 can be defined like this:
 
-	g = Grammy.define :lower_chars do
-		rule lower: 'a' | 'b' | .. | 'z'
+	g = Grammy.define do
+		rule lower => 'a' | 'b' | .. | 'z'
 	end
 
 or shorter:
 
-	g = Grammy.define :lower_chars do
-		rule lower: 'a'..'z'
+	g = Grammy.define do
+		rule lower => 'a'..'z'
 	end
 
 So the range is a shortcut.
@@ -68,8 +82,8 @@ The following BNF grammar:
 
 can be defined like this:
 
-	g = Grammy.define :digit_grammar do
-		rule digits: +('1'..'9')
+	g = Grammy.define do
+		rule digits => +('1'..'9')
 	end
 
 So the `+` operator (Kleene-cross) has just to be in front of the subrule that should be repeated.
@@ -89,11 +103,11 @@ The following BNF grammar with multiple rules:
 
 is defined like this:
 
-	g = Grammy.define :letters do
-		rule lower: 'a'..'z'
-		rule upper: 'A'..'Z'
-		rule letter: :lower | :upper
-		rule word: +:letter
+	g = Grammy.define do
+		rule lower => 'a'..'z'
+		rule upper => 'A'..'Z'
+		rule letter => lower | upper
+		rule word => +letter
 	end
 
 ### Optional rules
@@ -103,9 +117,9 @@ The following BNF grammar with an optional rule:
 
 is defined like this:
 
-	g = Grammy.define :letters do
-		rule a: 'a'
-		rule optional: :a?
+	g = Grammy.define do
+		rule a => 'a'
+		rule optional => a?
 	end
 
 So you just have to append a `?` to the name of the rule.
@@ -114,24 +128,24 @@ So you just have to append a `?` to the name of the rule.
 
 You can use the `eos` rule to match the end of a string:
 
-	g = Grammy.define :eos do
-		start words: 'hello' >> 'world' >> eos
+	g = Grammy.define do
+		start words => 'hello' >> 'world' >> eos
 	end
 
 ### List Rule
 
 Lists are things that often occur in grammars, e.g. a parameter list:
 
-	g = Grammy.define :list do
-		rule item: ('a'..'z')*(2..8)
-		start start: :item >> ~(',' >> :item)
+	g = Grammy.define do
+		rule item => ('a'..'z')*(2..8)
+		start items => item >> ~(',' >> item)
 	end
 
 Since this occurs very often and is not very readable, there is a shortcut for lists:
 
-	g = Grammy.define :list do
-		rule item: ('a'..'z')*(2..8)
-		start start: list(:item)
+	g = Grammy.define do
+		rule item => ('a'..'z')*(2..8)
+		start items => list(item)
 	end
 
 The seperator can be specified with the second parameter of `list` (default is ',').
@@ -140,11 +154,11 @@ Parsing
 -------
 You can use the defined grammar to parse strings:
 
-	g = Grammy.define :letters do
-		rule lower: 'a'..'z'
-		rule upper: 'A'..'Z'
-		rule letter: :lower | :upper
-		rule word: +:letter
+	g = Grammy.define do
+		rule lower => 'a'..'z'
+		rule upper => 'A'..'Z'
+		rule letter => lower | upper
+		rule word => +letter
 	end
 	
 	result = g.parse("someword", rule: :word)
@@ -156,23 +170,23 @@ You can use the defined grammar to parse strings:
 
 Most grammars have a start rule. You can set that start rule inside the grammar:
 
-	g = Grammy.define :letters do
-		rule lower: 'a'..'z'
-		rule upper: 'A'..'Z'
-		rule letter: :lower | :upper
-		start word: +:letter # this is now the start rule
+	g = Grammy.define do
+		rule lower => 'a'..'z'
+		rule upper => 'A'..'Z'
+		rule letter => lower | upper
+		start word => +letter # this is now the start rule
 	end
 
-The rule `:word` is now the start rule. If no rule is supplied to `parse`, then the start rule is used.
+The rule `word` is now the start rule. If no rule is supplied to `parse`, then the start rule is used.
 
 Skipping
 --------
 Often you want to skip several parts of the grammar (e.g whitespaces or comments).
 Thats what a skipper does:
 
-	g = Grammy.define :words do
-		default_skipper whitespacs: +' '
-		start words: 'hello' >> 'world'
+	g = Grammy.define do
+		default_skipper whitespacs => +' '
+		start words => 'hello' >> 'world'
 	end
 
 The skipper now skips whitespaces when parsing:
@@ -182,20 +196,20 @@ The skipper now skips whitespaces when parsing:
 
 You dont want to skip in every rule. Skippers are disabled when you declare the rule as `token`:
 
-	g = Grammy.define :words do
-		default_skipper whitespacs: +' '
-		token word: +('a'..'z') # no skipping between the characters
-		start words: 'hello' >> 'world' >> :word
+	g = Grammy.define do
+		default_skipper whitespacs => +' '
+		token word => +('a'..'z') # no skipping between the characters
+		start words => 'hello' >> 'world' >> word
 	end
 
 You can use multiple skippers:
 
 	g = Grammy.define do
-		default_skipper a_skipper: ~'a'
-		skipper b_skipper: ~'b'
+		default_skipper a_skipper => ~'a'
+		skipper b_skipper => ~'b'
 
-		rule content: +'+', skipper: :b_skipper
-		start start: '{' >> :content >> '}'
+		rule content => +'+', skipper: :b_skipper
+		start enclosed_content => '{' >> content >> '}'
 	end
 
 	g.should fully_match("aaa{aabb+bbbb+baa}")
@@ -226,7 +240,7 @@ Many substrings that are matched by the grammar are automatically *not* included
 - characters matched by a skipper
 - rules without a name dont create AST-Nodes:
 
-	`rule a: +('a'-'z')`
+	`rule a => +('a'-'z')`
 
 	This creates only *one* node for the rule 'a'. Not one for each character.
 
@@ -235,11 +249,11 @@ Error Detection
 
 The operator '&' which behaves like the '>>' operator disables backtracking. This means:
 
-	rule err_seq: 'aaa' & 'bbb'
+	rule err_seq => 'aaa' & 'bbb'
 
 Is nearly equivalent to:
 
-	rule seq: 'aaa' >> 'bbb'
+	rule seq => 'aaa' >> 'bbb'
 
 With the exception that when err_seq matches 'aaa' in the input, backtracking is disabled,
 so the next string in the input MUST be 'bbb', otherwise a SyntaxError is added
@@ -248,6 +262,7 @@ to the errors array of the ParseResult returned by Grammar#parse.
 SyntaxErrors look like this when written to console:
 
 For:
+
 	g.parse("aaabb").errors.first
 
 the output is:
@@ -274,6 +289,19 @@ the message is:
 	| Expected: 'bbb'
 	| In Rule: err_seq -> 'aaa' 'bbb'
 
+You can specify the source by passing it as option to the Grammy#parse method:
+
+	g.parse("aaaBBB", source: 'XXX').errors.first
+	
+resulting in:
+
+	Syntax error
+	| in source 'XXX'
+	| in line 1 at column 4
+	| "aaaBBB"
+	| ----^
+	| Expected: 'bbb'
+	| In Rule: err_seq -> 'aaa' 'bbb'
 
 Debugging
 ---------
@@ -290,7 +318,7 @@ Or shorter:
 Testing
 -------
 
-There are several rspec test which might inspire you (e.g. common_grammars_spec.rb).
+There are several rspec tests which might inspire you (e.g. common_grammars_spec.rb).
 
 For very complex grammars you can do something like this:
 
@@ -325,7 +353,10 @@ For very complex grammars you can do something like this:
 		end
 	end
 
-You basically define a lot of valid example input in a yaml file an test if each of example is matched.
+You basically define a lot of valid example input in a yaml file an 
+test if each of example is matched. 
+
+*NOTE*: This might be integrated in a Test-Suite for Grammy.
 
 Also there are some custom rspec matchers in spec/support:
 
@@ -340,9 +371,9 @@ Useful Things
 
 	Is used to output a rule in BNF like syntax. This is also used in syntax error output.
 
-		rule hash_entry: (:HASH_SYM | :expression >> '=>') & :expression
+		rule hash_entry => (hash_sym | expression >> '=>') & expression
 		[...]
-		g.rules[:hash_entry].to_bnf #=> hash_entry -> (HASH_SYM | expression '=>') expression
+		g.rules[:hash_entry].to_bnf #=> hash_entry -> (hash_sym | expression '=>') expression
 
 - **`Hash#with_default`**
 

@@ -234,7 +234,8 @@ class Grammar
 
 		logger.debug("##### Parsing(#{options[:rule]}): #{stream.inspect}")
 
-		context = Grammy::ParseContext.new(self,nil,stream,options.only(:ast_module))
+		#context = Grammy::ParseContext.new(self,nil,stream,options.only(:ast_module))
+		context = Grammy::ParseContext.new(self,options[:source],stream,options.only(:ast_module))
 
 		begin
 			match = rule.match(context)

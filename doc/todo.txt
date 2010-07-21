@@ -1,6 +1,7 @@
 
 Todo
 ==================================================
+###  : optional rules: a >> [(',' >> a)+] # change [x,y] => alternative?, [x] => optional
 ##   : Benchmark/Profile suit with ruby-prof?
 #    : try to determine the first-set for rules so alternatives can be rejected fast
 ###  : StreamReader/Lexer: marks parts as whitespace and does not read them again
@@ -42,7 +43,6 @@ Todo
 ##   : Skipper before and after token? only in sequence?
 #    : nice to have: 1..9 instead of '1'..'9'
 ###  : Match anything: a >> ~any >> b
-?    : optional rules: a >> [(',' >> a)+] # change [x,y] => alternative?, [x] => optional
 #    : Use ruby-graphviz to output the Grammar: grammar.to_image('grammar')
 #    : grammar.to_s #=> list rules and skippers
 
