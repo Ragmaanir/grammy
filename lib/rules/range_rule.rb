@@ -11,6 +11,7 @@ module Grammy
 			def initialize(name,range,options={})
 				super(name,options)
 				raise "range must be range but was: '#{range}'" unless range.is_a? Range
+				range = range.min.to_s..range.max.to_s unless range.min.is_a? String
 				@range = range
 			end
 
@@ -21,6 +22,7 @@ module Grammy
 
 				end_pos = start_pos = context.position
 
+				# TODO optimize: @range.member? ..., looping is too slow
 				matched_element = @range.find { |elem|
 					if elem == context.stream[start_pos,elem.length]
 						context.position += elem.length
@@ -35,6 +37,10 @@ module Grammy
 				match = MatchResult.new(self,success,node,start_pos,end_pos)
 				debug_end(context,match)
 				match
+			end
+			
+			def first_set
+				range.to_set
 			end
 
 			def to_s

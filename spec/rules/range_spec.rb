@@ -25,6 +25,17 @@ describe Grammy::Rules::RangeRule do
 				:class => Grammar::RangeRule
 			)
 		end
+		
+		it "range from 1..9 with digits" do
+			g = Grammy.define do
+				start digit => 1..9
+			end
+
+			g.rules[:digit].should have_properties(
+				:range => '1'..'9',
+				:class => Grammar::RangeRule
+			)
+		end
 	end
 
 	describe "should accept" do

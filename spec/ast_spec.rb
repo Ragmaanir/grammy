@@ -7,8 +7,8 @@ describe "AST should" do
 
 		it "a constant repetition rule" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				start string: :lower * 4
+				helper lower => 'a'..'z'
+				start string => lower * 4
 			end
 
 			g.parse("some").tree.should have_properties(
@@ -20,8 +20,8 @@ describe "AST should" do
 
 		it "a +repetition rule" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				start string: +:lower
+				helper lower => 'a'..'z'
+				start string => +lower
 			end
 
 			g.parse("somelongerstring").tree.should have_properties(
@@ -33,9 +33,9 @@ describe "AST should" do
 
 		it "nested rules" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				helper two_char: :lower >> :lower
-				start string: +:two_char
+				helper lower => 'a'..'z'
+				helper two_char => lower >> lower
+				start string => +two_char
 			end
 
 			g.parse("aabbccdd").tree.should have_properties(
@@ -47,8 +47,8 @@ describe "AST should" do
 
 		it "a sequence rule" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				start string: :lower >> :lower >> :lower >> :lower
+				helper lower => 'a'..'z'
+				start string => lower >> lower >> lower >> lower
 			end
 
 			g.parse("some").tree.should have_properties(
@@ -61,8 +61,8 @@ describe "AST should" do
 
 		it "a sequence containing a constant repetition" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				start string: :lower*3 >> :lower
+				helper lower => 'a'..'z'
+				start string => lower*3 >> lower
 			end
 
 			g.parse("some").tree.should have_properties(
@@ -73,12 +73,12 @@ describe "AST should" do
 
 		it "a complex grammar" do
 			g = Grammy.define do
-				helper lower: 'a'..'z'
-				helper upper: 'A'..'Z'
-				helper letter: :lower | :upper
-				helper ident_start: :letter | '_';
-				helper ident_letter: :ident_start | ('0'..'9')
-				start ident: :ident_start >> ~:ident_letter
+				helper lower => 'a'..'z'
+				helper upper => 'A'..'Z'
+				helper letter => lower | upper
+				helper ident_start => letter | '_'
+				helper ident_letter => ident_start | (0..9)
+				start ident => ident_start >> ~ident_letter
 			end
 
 			g.parse("some__098_ID123").tree.should have_properties(
@@ -92,10 +92,10 @@ describe "AST should" do
 
 	it "should only remove helper nodes" do
 		g = Grammy.define do
-			rule id: +('a'..'z')
-			helper part: :id >> ':' >> :id
-			rule sent: :part >> '.'
-			start start: :sent*(1..3)
+			rule id => +('a'..'z')
+			helper part => id >> ':' >> id
+			rule sent => part >> '.'
+			start some_sent => sent*(1..3)
 		end
 
 		tree = g.parse("ab:ac.kk:ee.").tree
@@ -117,16 +117,16 @@ describe "AST should" do
 
 	it "should parse sequence grammar with skipper and not create nodes for skipper" do
 		g = Grammy.define do
-			default_skipper whitespace: +(' ' | "\n" | "\t")
+			default_skipper whitespace => +(' ' | "\n" | "\t")
 
-			token a: 'ab'
-			start start: :a >> :a >> :a
+			token a => 'ab'
+			start aaa => a >> a >> a
 		end
 
 		root = g.parse("ab\nab\t  ab").tree
 
 		root.data.should == "ab\nab\t  ab"
-		root.name.should == :start
+		root.name.should == :aaa
 		root.should have(3).children
 		root.children[0].name.should == :a
 		root.children[0].data.should == 'ab'
@@ -134,16 +134,16 @@ describe "AST should" do
 
 	it "should parse sequence grammar with skipper and create nodes for tokens" do
 		g = Grammy.define do
-			default_skipper whitespace: +(' ' | "\n" | "\t")
+			default_skipper whitespace => +(' ' | "\n" | "\t")
 
-			token a: 'ab' | 'xy'
-			start start: :a >> :a >> :a
+			token a => 'ab' | 'xy'
+			start aaa => a >> a >> a
 		end
 
 		root = g.parse("ab\nxy\t  ab").tree
 
 		root.data.should == "ab\nxy\t  ab"
-		root.name.should == :start
+		root.name.should == :aaa
 		root.should have(3).children
 		root.children[0].name.should == :a
 		root.children[0].data.should == 'ab'
@@ -153,11 +153,11 @@ describe "AST should" do
 
 	it "generate only one node for complex tokens" do
 		g = Grammy.define do
-			token str: 'A' >> +('x' | 'y')
-			start start: '-' >> :str >> '.'
+			token str => 'A' >> +('x' | 'y')
+			start ctok => '-' >> str >> '.'
 		end
 
-		start = g.rules[:start]
+		start = g.rules[:ctok]
 		start.should_not be_merging_nodes
 		start.children[0].should be_merging_nodes
 		start.children[0].should be_generating_ast
@@ -173,6 +173,101 @@ describe "AST should" do
 		rep.children[0].should be_merging_nodes
 
 		g.parse("-Ayyxyx.").should be_full_match
-		g.parse("-Ayyxyx.").tree.to_tree_string.gsub(/[\n ]/,'').should == "start{str{'Ayyxyx'}}"
+		g.parse("-Ayyxyx.").tree.to_tree_string.gsub(/[\n ]/,'').should == "ctok{str{'Ayyxyx'}}"
 	end
+	
+	describe "origin-attributes:" do
+		before do
+			@g = Grammy.define do
+				default_skipper ws => /[\t \n]+/
+				
+				token 	str 	=> /[a-z]+/
+				token 	lasttok => ';'
+				rule 	item 	=> str >> '_' >> str
+				start 	strlist => list(item) >> lasttok
+			end
+			
+			#@tree = @g.parse("first,\nsecond,\nlast;").tree
+			@tree = @g.parse(<<-code).tree
+				first_
+				item,
+				second_item ,
+				 last
+				_
+				item;
+			code
+		end
+		
+		it "should store start-line in ast-nodes" do
+			@tree.item[0].start_line.should == 1
+			@tree.item[1].start_line.should == 3
+			@tree.item[2].start_line.should == 4
+		end
+		
+		it "should store end-line in ast-nodes" do
+			@tree.item[0].end_line.should == 2
+			@tree.item[1].end_line.should == 3
+			@tree.item[2].end_line.should == 6
+		end
+		
+		it "should store start-column in ast-nodes" do
+			@tree.item[0].start_column.should == 4
+			@tree.item[1].start_column.should == 4
+			@tree.item[2].start_column.should == 5
+		end
+		
+		it "should store end-column in ast-nodes" do
+			@tree.item[0].end_column.should == 8
+			@tree.item[1].end_column.should == 15
+			@tree.item[2].end_column.should == 8
+		end
+		
+		it "should store source in ast-nodes" do
+			@tree.source.should == :unknown
+			@tree.item[0].source.should == :unknown
+		end
+	end#origin-attributes
+	
+	
+	describe "easy-child-access" do
+		it "should access children by name" do
+			g = Grammy.define do
+				token str => /[a-z]+/
+				token lasttok => ';'
+				start strlist => list(str) >> lasttok
+			end
+			
+			tree = g.parse("a,abc,xyz;").tree
+			
+			tree.str[0].data.should == 'a'
+			tree.str[1].data.should == 'abc'
+			tree.lasttok.should == ';'
+		end
+		
+		it "should check for existence of children" do
+			g = Grammy.define do
+				token str => /[a-z]+/
+				token lasttok => ';'
+				start strlist => list(str) >> lasttok
+			end
+			
+			tree = g.parse("a,abc,xyz;").tree
+			
+			tree.lasttok?.should be_true
+			tree.unknownchild?.should be_false
+		end
+		
+		it "should raise when methods unsupported" do
+			g = Grammy.define do
+				token str => /[a-z]+/
+				token lasttok => ';'
+				start strlist => list(str) >> lasttok
+			end
+			
+			tree = g.parse("a,abc,xyz;").tree
+			
+			expect{ tree.lasttok = 5 }.to raise_error(NoMethodError)
+			expect{ tree.lasttok! }.to raise_error(NoMethodError)
+		end
+	end#easy-child-access
 end

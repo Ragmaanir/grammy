@@ -28,7 +28,7 @@ describe Grammy do
 			phrase.children[0].rule.should == g.rules[:item]
 
 			phrase.children[1].should be_a Grammar::Repetition
-			phrase.children[1].repetitions.should == (0..1000)
+			phrase.children[1].repetitions.should == (0..Grammy::Rules::MAX_REPETITIONS)
 			phrase.children[1].should have(1).children
 
 			params = phrase.children[1].children[0]

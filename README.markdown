@@ -19,6 +19,7 @@ Features
 
 Recent Changes
 --------------
+- Added an AST::Walker that can be used to traverse an AST
 - rules now dont need to be symbols. They are implemented via method_missing 
 	returning the method name as symbol. This is closer to BNF. Also later on 
 	parameters might be passed: `rule x(param1) => other_rule(param2) >> '.'`
@@ -244,6 +245,48 @@ Many substrings that are matched by the grammar are automatically *not* included
 
 	This creates only *one* node for the rule 'a'. Not one for each character.
 
+AST - Walker
+------------
+An AST-Walker traverses the Abstract Syntax Tree constructed by the parser. 
+A Walker can be built by using a simple DSL:
+
+	my_context = class Context
+		def add_class(name); ... ;end
+		def close_class(name); ... ;end
+		def current_class; ... ;end
+	end.new
+	
+	@walker = AST::Walker::Builder.new(context: my_context) do
+	
+		before(:class_def) do |class_def|
+			add_class(class_def[:class_name]) # create a new empty class
+		end
+		
+		after(:class_def) do |class_def|
+			close_class(class_def[:class_name]) # adding attributes and methods is finished now
+		end
+
+		after(:attribute_def) do |attr_def|
+			current_class.add_attribute(attr_def[:attr_name],...)
+		end
+	end
+
+The `before` and `after` methods register a block with the name of nodes. When 
+the Walker visits a node with that name the registered block is called with 
+the node as its parameter. Blocks registered with `before` are called before 
+descendants of the node have been visited. Blocks registered with `after` are 
+called after the descendant nodes have been visited. The AST::Walker traverses the 
+tree in a top-down and left-to-right direction.
+
+The context-object is used to store information between calls of the registered blocks. 
+Method calls inside of the blocks are delegated to the context-object. So the context-object 
+can be used to store symbols, types, classes, variables, scopes, generated code, errors and other things.
+
+The Walker can be applied to an AST in the following way:
+
+	@walker.walk(mygrammar.parse(input).tree)
+
+
 Error Detection
 ---------------
 
@@ -302,6 +345,7 @@ resulting in:
 	| ----^
 	| Expected: 'bbb'
 	| In Rule: err_seq -> 'aaa' 'bbb'
+
 
 Debugging
 ---------
@@ -380,3 +424,5 @@ Useful Things
 	This assigns values to keys that are not assigned yet (this means the key is not present).
 
 		{a: nil, b: 5}.with_default(a: true, b: nil, c: 6) #=> {a: nil, b: 5, c: 6}
+		
+	AFAIK this is the same as active\_supports `reverse_merge`

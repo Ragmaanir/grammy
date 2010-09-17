@@ -48,11 +48,22 @@ module Grammy
 #				@line_start = part.rindex("\n") + @position + 1 if newlines > 0
 #			end
 
+			# TODO optimize
 			@line_number = @stream[0,new_pos].count("\n") + 1
 			@line_start = @stream[0,new_pos].rindex("\n") || 0
 			@line_start += 1 if @line_number > 1
 
 			@position = new_pos
+		end
+		
+		def line_number_at(pos)
+			@stream[0,pos].count("\n") + 1
+		end
+		
+		def column_at(pos)
+			line_start = @stream[0,pos].rindex("\n") || 0
+			line_start += 1 if line_number_at(pos) > 1
+			pos - line_start
 		end
 
 		def line
@@ -75,8 +86,13 @@ module Grammy
 			#@errors << SyntaxError.new(source,line,line_number,failure_pos - @line_start,sequence,failed_rule)
 		end
 		
-		def create_ast_node(*args)
-			@ast_node_class.new(*args)
+		#def create_ast_node(*args)
+		#	@ast_node_class.new(*args)
+		#end
+		def create_ast_node(name,options={})
+			#@ast_node_class.new(name,options)
+			#@ast_node_class.new(name,options.merge(start_line: line_number, start_column: column, source: source))
+			@ast_node_class.new(name,options.merge(source: source))
 		end
 	end
 

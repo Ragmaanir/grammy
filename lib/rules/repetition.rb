@@ -54,6 +54,12 @@ module Grammy
 				debug_end(context,result)
 				result
 			end
+			
+			def first_set
+				set = rule.first_set
+				set << nil if repetitions.include?(0)
+				set
+			end
 
 			def to_s
 				rule_str = @rule.to_s

@@ -75,7 +75,11 @@ class Grammar
 				type: :rule
 			)
 
-			rule = Rule.to_rule(defn)
+			#if defn.is_a? RuleWrapper and not defn.optional?
+			#	rule = RuleWrapper.new(name)
+			#else
+				rule = Rule.to_rule(defn)
+			#end
 
 			rule.grammar = self
 
@@ -91,7 +95,9 @@ class Grammar
 
 		# returns the hash of all rules that are registered as a skipper
 		def skippers
-			@rules.select{ |_,rule| rule.type == :skipper }
+			#@rules.select{ |_,rule| rule.type == :skipper }
+			@skippers ||= @rules.select{ |_,rule| rule.type == :skipper }
+			@skippers
 		end
 
 		# creates and registers a skipper
@@ -135,7 +141,7 @@ class Grammar
 		end
 
 		def list(rule,sep=',',options={})
-			raise unless rule.is_a? Symbol
+			raise unless rule.is_a? Symbol or rule.is_a? Rule
 			#range = options[:range] || 0..1000
 			#result = rule >> (sep & rule)*range
 			if options[:range]
@@ -185,6 +191,10 @@ class Grammar
 			@tree = match.ast_node
 			@stream = context.stream
 			@errors = context.errors
+		end
+		
+		def range
+			start_pos..end_pos
 		end
 
 		def full_match?

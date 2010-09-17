@@ -52,6 +52,11 @@ module Grammy
 							context.position = start_pos
 						else
 							context.add_error(root,e) # TODO ERROR + continue
+							# detect sync tokens
+							failed_idx = @children.index(e)
+							tokens = @children[failed_idx..-1].select{ |r| r.is_a?(StringRule) }
+							# move to sync tokens in stream
+							# XXX
 						end
 					end
 
@@ -70,6 +75,18 @@ module Grammy
 
 				debug_end(context,result)
 				result
+			end
+			
+			def first_set
+				stop_child = @children.find { |child|
+					:stop unless child.first_set.include? nil
+				}
+				
+				stop_child_idx = @children.index(stop_child || @children.last)
+				
+				set = @children[0..stop_child_idx].map(&:first_set).to_set.flatten
+				set.delete(nil) unless stop_child.nil?
+				set
 			end
 
 			def to_s

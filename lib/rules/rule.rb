@@ -8,7 +8,6 @@ module Grammy
 		# RULE
 		#
 		class Rule
-			#include Operators
 			Operators.inject_into(self)
 
 			Callbacks = [:modify_ast,:on_error,:on_match]
@@ -143,12 +142,20 @@ module Grammy
 			end
 
 			def create_ast_node(context,range,children=[])
+				raise("expected ParseContext") unless context.is_a? ParseContext
+				raise("expected Array") unless children.is_a? Array
+				raise("expected Array") unless range.is_a? Array
+				
 				#node = AST::Node.new(name, merge: merging_nodes?, range: range, stream: context.stream, children: children)
 				node = context.create_ast_node(name, 
 					merge: merging_nodes?, 
 					range: range, 
 					stream: context.stream, 
-					children: children)
+					children: children,
+					start_line: context.line_number_at(range.first),
+					end_line: context.line_number_at(range.last),
+					start_column: context.column_at(range.first),
+					end_column: context.column_at(range.last))
 				
 				modify_node(node)
 			end
@@ -177,6 +184,7 @@ module Grammy
 				when Symbol then RuleWrapper.new(input)
 				when String then StringRule.new(input)
 				when Integer then StringRule.new(input.to_s)
+				when Regexp then RegexRule.new(input)
 				when Rule then input
 				else
 					raise "invalid input '#{input}', cant convert to a rule"

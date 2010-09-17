@@ -47,6 +47,10 @@ module Grammy
 				debug_end(context,result)
 				result
 			end
+			
+			def first_set
+				@children.map(&:first_set).to_set.flatten
+			end
 
 			def to_s
 				"#{@children.join(" | ")}"

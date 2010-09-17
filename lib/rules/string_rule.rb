@@ -32,6 +32,10 @@ module Grammy
 				debug_end(context,match)
 				match
 			end
+			
+			def first_set
+				[@string[0]].to_set
+			end
 
 			def to_s
 				"'#{@string}'"

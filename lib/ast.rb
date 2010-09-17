@@ -2,6 +2,7 @@ module AST
 
 	class Node
 		attr_reader :name, :range, :start_pos, :end_pos, :children, :stream
+		attr_reader :source, :start_line, :end_line, :start_column, :end_column
 
 		def initialize(name,options={})
 			@name = name || 'anonymous'
@@ -12,9 +13,21 @@ module AST
 			@stream = options[:stream] || raise("no stream given")
 
 			options[:children].each{ |child| add_child(child) } if options[:children]
+			
+			options.except(:merge,:stream,:children).each do |key,val|
+				if respond_to?("#{key}=")
+					send("#{key}=",val)
+				else
+					instance_variable_set("@#{key}",val)
+				end
+			end
 		end
 
 		# TODO add parent
+		
+		def line_range
+			[start_line..end_line]
+		end
 
 		def range
 			[@start_pos,@end_pos]
@@ -48,6 +61,41 @@ module AST
 				@children.concat(node.children)
 			else
 				@children << node
+			end
+		end
+		
+		def get_children(name)
+			raise("symbol expected but got: #{name.inspect}") unless name.is_a? Symbol
+			@children.select{ |child| child.name == name }
+		end
+		
+		def has_child?(name)
+			get_children(name).any?
+		end
+		
+		def method_missing(meth,*args)
+			#@children.find{ |child| child.name == meth } || raise("no child named '#{meth}'")
+			
+			if /\?\Z/ === meth
+				meth_name = meth[0..-2].to_sym
+				get_children(meth_name).any?
+			elsif /[^?!=]\Z/ === meth
+				c = get_children(meth)
+				if c.empty?
+					raise("node #{name} has no child named '#{meth}'")
+				else
+					if c.one?
+						if c.first.leaf_node?
+							c.first.data
+						else
+							c.first
+						end
+					else
+						c
+					end
+				end
+			else
+				super
 			end
 		end
 

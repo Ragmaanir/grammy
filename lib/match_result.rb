@@ -9,7 +9,7 @@ module Grammy
 		# end_pos is the index of the character that follows the last matched character
 		def initialize(rule,result,ast_node,start_pos,end_pos)
 			raise("expected a rule but was: #{rule.inspect}") unless rule.is_a? Grammy::Rules::Rule
-			raise unless [true,false].member? result
+			raise("expected true or false but was: #{result.inspect}") unless [true,false].member? result
 			raise if ast_node and not ast_node.is_a? AST::Node
 			@rule = rule
 			@result = result

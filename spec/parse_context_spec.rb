@@ -138,6 +138,27 @@ describe Grammy::ParseContext do
 			:line => ''
 		)
 	end
+	
+	it "should calculate line number for arbitrary position" do
+		c = Grammy::ParseContext.new(nil,nil,"line1\nline2\n\n   line4")
+		
+		c.line_number_at(5).should == 1
+		c.line_number_at(6).should == 2
+		c.line_number_at(11).should == 2
+		c.line_number_at(12).should == 3
+		c.line_number_at(21).should == 4
+	end
+	
+	it "should calculate column number for arbitrary position" do
+		c = Grammy::ParseContext.new(nil,nil,"line1\nline2\n\n   line4")
+		
+		c.column_at(0).should == 0
+		c.column_at(5).should == 5
+		c.column_at(6).should == 0
+		c.column_at(12).should == 0
+		c.column_at(13).should == 0
+		c.column_at(21).should == 8
+	end
 
 #	it "should not move position behind backtrack border" do
 #		c = Grammy::ParseContext.new(nil,nil,"line1\nline2\nline3\nline4\n")

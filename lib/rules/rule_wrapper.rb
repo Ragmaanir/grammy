@@ -42,11 +42,26 @@ module Grammy
 				match = rule.match(context)
 
 				success = match.success? || optional?
+				
+				if generating_ast? and match.success? # dont generate node if nothing matched
+					children = match.ast_node ? [match.ast_node] : []
+					node = create_ast_node(context,[match.start_pos, match.end_pos], children)
+				else
+					node = nil
+				end
+				
+				result = MatchResult.new(self, success, node, match.start_pos, match.end_pos)
 
-				result = MatchResult.new(self, success, (match.ast_node if match.success?), match.start_pos, match.end_pos)
+				#result = MatchResult.new(self, success, (match.ast_node if match.success?), match.start_pos, match.end_pos)
 
 				debug_end(context,result) if rule.debugging?
 				result
+			end
+			
+			def first_set
+				set = rule.first_set
+				set << nil if optional?
+				set
 			end
 
 			def to_s
