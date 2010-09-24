@@ -20,7 +20,7 @@ class Grammy::Rules::RegexRule < Grammy::Rules::LeafRule
 		end_pos = start_pos = context.position
 		
 		regex_match = @regex.match(context.stream[start_pos..-1])
-		success = if regex_match && (regex_match.begin(0) == 0) then true else false end
+		success = !!(regex_match && (regex_match.begin(0) == 0))
 
 		if success
 			end_pos += regex_match[0].length

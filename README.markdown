@@ -5,35 +5,52 @@ Description
 -----------
 Grammy is a DSL that generates recursive descent parsers. The DSL is inspired by
 the boost::spirit parser framework for c++. I try to keep the DSL as close 
-as possible to EBNF syntax but add several parsing-features to it. 
+as possible to EBNF syntax but add several parsing-features to it (e.g. Skippers, Error detection, lists). 
+
+General Information
+------------------------------
+
+- Ruby 1.9.1 only (using features that are not part of 1.8.6/7)
+- Requires ruby-graphviz for writing an AST to an image file
+- Require log4r for logging
+
+Installation
+------------
+
+`git clone` the repository, `cd` into the directory and execute `rake gem`. 
+Then do `sudo gem install pkg/Grammy-x.x.x.gem`.
 
 Features
 --------
 
-- Most EBNF features: Sequences, Repetition, Alternatives, Optional rules
+- Most EBNF features: Sequences, Repetition, Alternatives, Optional rules, Regex rules
 - Shortcut for lists: `list` and `list?`
 - Skipping of characters: comments, whitespaces between words
 - Generation of an AST. Most unused tokens can be removed automatically.
-- AST can be written to an image file with help of graphviz.
+- AST can be written to an image file with help of ruby-graphviz.
 - Error handling: disable backtracking with the `&` operator and get simple syntax error reports
 
 Recent Changes
 --------------
-- Added an AST::Walker that can be used to traverse an AST
-- rules now dont need to be symbols. They are implemented via method_missing 
+- Added an `AST::Walker` that can be used to traverse an AST
+- Regex rules
+- rules now dont need to be symbols. They are implemented via `method_missing` 
 	returning the method name as symbol. This is closer to BNF. Also later on 
 	parameters might be passed: `rule x(param1) => other_rule(param2) >> '.'`
 
 Todo
 ----
 
-- Subtraction: +('a'..'z') - 'reserved'
+- Combining of regex rules: `token x => /[a-z]+/ | /[_]+/`
+- Subtraction: `+('a'..'z') - 'reserved'`
 - semantic actions
 - validation (rules which never match, left recursion)
-- much more: see doc/todo.txt
+- much more: see `doc/todo.txt`
 
 Define a grammar
 ----------------
+
+First: `require 'Grammy'`
 
 ### Empty Grammar
 All grammars in Grammy are defined inside a define-block:
@@ -41,6 +58,15 @@ All grammars in Grammy are defined inside a define-block:
 	g = Grammy.define :optional_name do
 		# rules here
 	end
+
+### Regex-Rules:
+The following BNF grammar:
+
+	<sometoken> ::= ('a' | ... | 'z')+ ('0' | .. | '9')*
+	
+can be defined in grammy like this:
+
+	rule sometoken ::= /[a-z]+[0-9]*/
 
 ### Sequences
 The following BNF grammar:
@@ -241,7 +267,7 @@ Many substrings that are matched by the grammar are automatically *not* included
 - characters matched by a skipper
 - rules without a name dont create AST-Nodes:
 
-	`rule a => +('a'-'z')`
+	`rule a => +('a'..'z')`
 
 	This creates only *one* node for the rule 'a'. Not one for each character.
 
@@ -358,6 +384,16 @@ Or shorter:
 
 	g.parse!("some input")
 
+Performance
+-----------
+
+Use Regex instead of Alternatives for Tokens:
+
+	token x => +('a'..'z')
+	
+is slower than:
+
+	token x => /[a-z]+/
 
 Testing
 -------
