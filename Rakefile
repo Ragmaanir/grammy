@@ -9,10 +9,10 @@ require 'spec/rake/spectask'
 
 spec = Gem::Specification.new do |s|
   s.name = 'Grammy'
-  s.version = '0.0.8'
+  s.version = '0.0.9'
   s.has_rdoc = true
   s.extra_rdoc_files = ['README.markdown']
-  s.summary = 'Grammy is a DSL to describe Grammars and gernerate LL Parsers'
+  s.summary = 'Grammy is a DSL to describe Grammars and gernerate RD Parsers from these descriptions'
   s.description = s.summary
   s.author = 'Ragmaanir'
   s.email = 'ragmaanir@gmail.com'

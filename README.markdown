@@ -32,6 +32,7 @@ Features
 
 Recent Changes
 --------------
+- Optional rules can now be defined inside `[]`: `rule a => 'maybe' >> [x >> +y]`
 - Added an `AST::Walker` that can be used to traverse an AST
 - Regex rules
 - rules now dont need to be symbols. They are implemented via `method_missing` 
@@ -142,14 +143,20 @@ The following BNF grammar with an optional rule:
 
 	<optional> ::= ['a']
 
-is defined like this:
+can be defined like this:
+
+	g = Grammy.define do
+		rule optional => ['a']
+	end
+
+or like this:
 
 	g = Grammy.define do
 		rule a => 'a'
 		rule optional => a?
 	end
 
-So you just have to append a `?` to the name of the rule.
+So you can use the `[]` or you have to append a `?` to the name of a helper rule.
 
 ### EOS Rule
 
