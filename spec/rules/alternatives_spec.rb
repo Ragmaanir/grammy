@@ -14,17 +14,17 @@ describe Grammy::Rules::Alternatives do
 			g.rules[:lower].children.each{ |child| child.should be_a Grammar::StringRule }
 		end
 
-		it "with alternative rule via array" do
-			g = Grammy.define do
-				rule a_or_g => ['a','g']
-			end
-
-			a_or_g = g.rules[:a_or_g]
-			a_or_g.should be_a Grammar::Alternatives
-			a_or_g.should have(2).children
-			a_or_g.children[0].should be_a Grammar::StringRule
-			a_or_g.children[1].should be_a Grammar::StringRule
-		end
+		#it "with alternative rule via array" do
+		#	g = Grammy.define do
+		#		rule a_or_g => ['a','g']
+		#	end
+		#
+		#	a_or_g = g.rules[:a_or_g]
+		#	a_or_g.should be_a Grammar::Alternatives
+		#	a_or_g.should have(2).children
+		#	a_or_g.children[0].should be_a Grammar::StringRule
+		#	a_or_g.children[1].should be_a Grammar::StringRule
+		#end
 
 		it "with alternative rule via symbols" do
 			g = Grammy.define do
@@ -35,8 +35,8 @@ describe Grammy::Rules::Alternatives do
 
 			g.rules[:a_or_b].should be_a Grammar::Alternatives
 			g.rules[:a_or_b].should have(2).children
-			g.rules[:a_or_b].children[0].should be_a Grammar::RuleWrapper
-			g.rules[:a_or_b].children[1].should be_a Grammar::RuleWrapper
+			g.rules[:a_or_b].children[0].should be_a Grammar::RuleReference
+			g.rules[:a_or_b].children[1].should be_a Grammar::RuleReference
 		end
 	end
 
@@ -51,15 +51,15 @@ describe Grammy::Rules::Alternatives do
 			g.should not_match("xd","d","")
 		end
 
-		it "with alternative rule via array" do
-			g = Grammy.define do
-				start a_or_g => ['a','g']
-			end
-
-			g.should fully_match("a","g")
-			g.should partially_match("ag","ax")
-			g.should not_match("xd","d","")
-		end
+		#it "with alternative rule via array" do
+		#	g = Grammy.define do
+		#		start a_or_g => ['a','g']
+		#	end
+		#
+		#	g.should fully_match("a","g")
+		#	g.should partially_match("ag","ax")
+		#	g.should not_match("xd","d","")
+		#end
 	end
 
 end

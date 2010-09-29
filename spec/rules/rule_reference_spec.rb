@@ -1,7 +1,7 @@
 
 require 'spec/spec_helper'
 
-describe Grammy::Rules::RuleWrapper do
+describe Grammy::Rules::RuleReference do
 
 	describe "should define" do
 		it "non-optional rule" do
@@ -12,9 +12,8 @@ describe Grammy::Rules::RuleWrapper do
 
 			g.rules[:char].should have_properties(
 				:name => :char,
-				:class => Grammar::RuleWrapper,
-				:rule => g.rules[:a],
-				:optional? => false
+				:class => Grammar::RuleReference,
+				:referenced_rule => g.rules[:a]
 			)
 		end
 
@@ -26,9 +25,7 @@ describe Grammy::Rules::RuleWrapper do
 
 			g.rules[:char].should have_properties(
 				:name => :char,
-				:class => Grammar::RuleWrapper,
-				:rule => g.rules[:a],
-				:optional? => true
+				:class => Grammar::OptionalRule
 			)
 		end
 	end

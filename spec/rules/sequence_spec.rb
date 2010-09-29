@@ -31,7 +31,7 @@ describe Grammy::Rules::Sequence do
 
 			phrase.should have(3).children
 			
-			phrase.children.each{|child| child.should be_a Grammar::RuleWrapper}
+			phrase.children.each{|child| child.should be_a Grammar::RuleReference}
 
 			phrase.children[0].name.should == :a
 			phrase.children[1].name.should == :b
@@ -50,7 +50,7 @@ describe Grammy::Rules::Sequence do
 			phrase.should have(3).children
 
 			phrase.children.each {|child|
-				child.should be_a Grammar::RuleWrapper
+				child.should be_a Grammar::RuleReference
 				child.name.should == :seq
 			}
 
@@ -101,8 +101,8 @@ describe Grammy::Rules::Sequence do
 			start = g.rules[:s]
 			
 			start.should_not be_merging_nodes
-			start.children[0].rule.should be_merging_nodes
-			start.children[1].rule.should_not be_merging_nodes
+			start.children[0].referenced_rule.should be_merging_nodes
+			start.children[1].referenced_rule.should_not be_merging_nodes
 		end
 
 	end

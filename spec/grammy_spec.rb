@@ -24,8 +24,8 @@ describe Grammy do
 			phrase.should be_a Grammar::Sequence
 			phrase.should have(2).children
 			
-			phrase.children[0].should be_a Grammar::RuleWrapper
-			phrase.children[0].rule.should == g.rules[:item]
+			phrase.children[0].should be_a Grammar::RuleReference
+			phrase.children[0].referenced_rule.should == g.rules[:item]
 
 			phrase.children[1].should be_a Grammar::Repetition
 			phrase.children[1].repetitions.should == (0..Grammy::Rules::MAX_REPETITIONS)
@@ -35,8 +35,8 @@ describe Grammy do
 			params.should be_a Grammar::Sequence
 			params.should have(2).children
 			params.children[0].should be_a Grammar::StringRule
-			params.children[1].should be_a Grammar::RuleWrapper
-			params.children[1].rule.should == g.rules[:item]
+			params.children[1].should be_a Grammar::RuleReference
+			params.children[1].referenced_rule.should == g.rules[:item]
 		end
 
 		it "grammar with helper rule" do
@@ -50,13 +50,13 @@ describe Grammy do
 			
 			phrase.should be_a Grammar::Sequence
 			phrase.should have(2).children
-			phrase.children.each{|child| child.should be_a Grammar::RuleWrapper }
+			phrase.children.each{|child| child.should be_a Grammar::RuleReference }
 
 			g.rules[:a].should be_merging_nodes
 			g.rules[:b].should_not be_merging_nodes
 			
-			phrase.children[0].rule.should == g.rules[:a]
-			phrase.children[1].rule.should == g.rules[:b]
+			phrase.children[0].referenced_rule.should == g.rules[:a]
+			phrase.children[1].referenced_rule.should == g.rules[:b]
 		end
 
 		it "should have multiple skippers" do

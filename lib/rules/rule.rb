@@ -112,8 +112,6 @@ module Grammy
 			end
 
 			def using_skipper?
-				#grammar.skipper and (@using_skipper or (root.using_skipper? unless root==self))
-
 				grammar.using_skippers? and skipper
 			end
 
@@ -146,7 +144,6 @@ module Grammy
 				raise("expected Array") unless children.is_a? Array
 				raise("expected Array") unless range.is_a? Array
 				
-				#node = AST::Node.new(name, merge: merging_nodes?, range: range, stream: context.stream, children: children)
 				node = context.create_ast_node(name, 
 					merge: merging_nodes?, 
 					range: range, 
@@ -169,7 +166,6 @@ module Grammy
 			end
 
 			def skip(context)
-				#grammar.skipper.match(context)
 				skipper.match(context)
 			end
 
@@ -180,8 +176,15 @@ module Grammy
 			def self.to_rule(input)
 				case input
 				when Range then RangeRule.new(nil,input)
-				when Array then Alternatives.new(nil,input)
-				when Symbol then RuleWrapper.new(input)
+				when Array then
+					raise("array has multiple entries but should have only one") unless input.length == 1
+					OptionalRule.new(nil,Rule.to_rule(input.first))
+				when Symbol then
+					if /.+[?]\Z/ === input
+						OptionalRule.new(nil,Rule.to_rule(input[0..-2].to_sym))
+					else
+						RuleReference.new(input)
+					end
 				when String then StringRule.new(input)
 				when Integer then StringRule.new(input.to_s)
 				when Regexp then RegexRule.new(input)
@@ -206,7 +209,7 @@ module Grammy
 
 			def rule_class_name_abbreviation
 				case class_name
-					when "RuleWrapper" then "Wrp"
+					when "RuleReference" then "Ref"
 					else class_name[0,3]
 				end
 			end
@@ -215,12 +218,12 @@ module Grammy
 				abbr = rule_class_name_abbreviation
 
 				scope_name = name || ':'+abbr
-				#scope_name = '>' if self.class == RuleWrapper
+				#scope_name = '>' if self.class == RuleReference
 				scope_name
 			end
 
 			def debug_start(context)
-				Log4r::NDC.push(debug_scope_name) if self.class != RuleWrapper
+				Log4r::NDC.push(debug_scope_name) if self.class != RuleReference
 				#start = context.position
 				#grammar.logger.debug("match(#{context.stream[start,15].inspect},#{start})") if debugging?
 			end
@@ -231,7 +234,7 @@ module Grammy
 
 				result = match.success? ? "SUCC" : "FAIL"
 				grammar.logger.debug("\t\t #{result}[#{range}]: #{consumed.inspect}") if debugging?
-				Log4r::NDC.pop if self.class != RuleWrapper
+				Log4r::NDC.pop if self.class != RuleReference
 			end
 		end
 

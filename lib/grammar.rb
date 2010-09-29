@@ -75,8 +75,8 @@ class Grammar
 				type: :rule
 			)
 
-			#if defn.is_a? RuleWrapper and not defn.optional?
-			#	rule = RuleWrapper.new(name)
+			#if defn.is_a? RuleReference and not defn.optional?
+			#	rule = RuleReference.new(name)
 			#else
 				rule = Rule.to_rule(defn)
 			#end
@@ -155,8 +155,8 @@ class Grammar
 
 		def list?(*params)
 			name = "list_helper_#{params.first}".to_sym
-			helper(name => list(*params))
-			RuleWrapper.new(name,optional: true)
+			helper(name => OptionalRule.new(nil,list(*params)))
+			RuleReference.new(name)
 		end
 
 		def eos
